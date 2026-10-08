@@ -36,7 +36,7 @@ jobs:
         shell: bash
         run: |
           source "$HOME/export-esp.sh"
-          cargo build --release
+          cargo +esp build --release -Zbuild-std=std,panic_abort
 
       - name: Produce flashable binary
         shell: bash

@@ -1,0 +1,8 @@
+/target
+/.embuild
+/sdkconfig
+/sdkconfig.old
+/.pio
+*.elf
+*.bin
+.env

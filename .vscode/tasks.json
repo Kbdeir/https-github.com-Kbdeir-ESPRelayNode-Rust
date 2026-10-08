@@ -1,0 +1,18 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Rust: Build release",
+      "type": "shell",
+      "command": "cargo build --release",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Rust: Flash and monitor",
+      "type": "shell",
+      "command": "cargo run --release",
+      "problemMatcher": []
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+name: ESP32 Rust firmware build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build original ESP32 (Xtensa)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install ESP-IDF Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential git curl pkg-config libssl-dev \
+            python3 python3-pip python3-venv cmake ninja-build flex bison \
+            gperf ccache libffi-dev libusb-1.0-0
+
+      - name: Install Rust and Espressif toolchain
+        shell: bash
+        run: |
+          rustup toolchain install stable --profile minimal
+          cargo +stable install espup --locked
+          espup install
+          source "$HOME/export-esp.sh"
+          cargo +stable install ldproxy --locked
+          cargo +stable install espflash --locked
+
+      - name: Build firmware
+        shell: bash
+        run: |
+          source "$HOME/export-esp.sh"
+          cargo build --release
+
+      - name: Produce flashable binary
+        shell: bash
+        run: |
+          source "$HOME/export-esp.sh"
+          mkdir -p dist
+          espflash save-image --chip esp32 --merge \
+            target/xtensa-esp32-espidf/release/esp-relay-node-rust \
+            dist/esp-relay-node-rust-esp32.bin
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: esp-relay-node-rust-esp32
+          path: dist/esp-relay-node-rust-esp32.bin
+          if-no-files-found: error
+          retention-days: 14

@@ -4,13 +4,35 @@ version = "0.1.0"
 edition = "2021"
 rust-version = "1.77"
 
+[workspace]
+members = ["crates/node-core"]
+default-members = ["."]
+resolver = "2"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+
 [dependencies]
 anyhow = "1"
 esp-idf-svc = { version = "0.51", features = ["binstart"] }
+embedded-svc = "0.28"
 log = "0.4"
+node-core = { path = "crates/node-core" }
+serde_json = "1"
+rmodbus = "=0.12.2"
 
 [build-dependencies]
 embuild = "0.33"
+node-core = { path = "crates/node-core" }
+serde_json = "1"
 
 [package.metadata.esp-idf-sys]
 esp_idf_version = "v5.3.3"
+esp_idf_sdkconfig_defaults = ["sdkconfig.defaults"]
+
+[[package.metadata.esp-idf-sys.extra_components]]
+bindings_header = "src/littlefs.h"
+component_dirs = ["components/littlefs"]

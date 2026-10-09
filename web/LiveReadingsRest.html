@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="en">
+<head>
+<script src="/rust-ui.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>REST Live Readings</title>
+<style>
+:root{--page:#edf1f5;--ink:#152033;--muted:#687589;--panel:#fff;--panel-2:#f8fafc;--line:#d9e1ea;--teal:#0f766e;--teal-dark:#0a5f59;--blue:#2563eb;--amber:#b7791f;--rose:#be123c;--green:#15803d;--slate:#475569;--shadow-sm:0 2px 8px rgba(21,32,51,.06);--shadow:0 18px 45px rgba(21,32,51,.12)}
+*{box-sizing:border-box}
+html{background:var(--page)}
+body{margin:0;min-height:100vh;color:var(--ink);font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.42;background:linear-gradient(180deg,#dfe9f3 0,#edf1f5 320px),var(--page)}
+.shell{width:min(1200px,calc(100vw - 24px));margin:0 auto;padding:20px 0 36px}
+.topbar{overflow:hidden;color:#fff;border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:20px 24px;background:linear-gradient(135deg,#152033,#103f49,#0f766e);box-shadow:var(--shadow)}
+.topbar h1{margin:0;font-size:26px;font-weight:700}
+.topbar-sub{margin-top:6px;color:#cfe0ea;font-size:13px}
+.add-bar{margin-top:14px;display:flex;flex-direction:column;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow-sm);padding:12px}
+.add-bar-row{display:grid;gap:8px}
+.add-bar-row-1{grid-template-columns:1fr auto auto}
+.add-bar-row-2{grid-template-columns:1fr 1fr}
+.add-bar input{width:100%;min-height:34px;border:1px solid #b8c7d7;border-radius:6px;padding:6px 10px;font:inherit;color:var(--ink);background:#fff}
+.add-bar input:focus{outline:2px solid var(--teal);border-color:var(--teal)}
+.add-bar-label{font-size:11px;color:var(--muted);font-weight:700;margin-bottom:-2px}
+.btn{min-height:34px;padding:6px 16px;border:none;border-radius:6px;font:inherit;font-weight:700;cursor:pointer;white-space:nowrap}
+.btn-primary{background:var(--teal);color:#fff}
+.btn-primary:hover{background:var(--teal-dark)}
+.btn-secondary{background:var(--slate);color:#fff}
+.btn-secondary:hover{background:#334155}
+.no-boards{margin-top:14px;padding:48px 24px;text-align:center;background:var(--panel);border:2px dashed var(--line);border-radius:8px;color:var(--muted)}
+.no-boards strong{display:block;font-size:16px;color:var(--ink);margin-bottom:6px}
+.board-panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow-sm);margin-top:14px;overflow:hidden}
+.board-head{display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:12px;padding:12px 16px;background:linear-gradient(135deg,#152033,#103f49);color:#fff}
+.bp-conn-dot{width:11px;height:11px;border-radius:50%;flex:0 0 auto;background:#94a3b8}
+.bp-conn-dot.on{background:#16a34a;box-shadow:0 0 0 2px #bbf7d0}
+.bp-conn-dot.off{background:#dc2626;box-shadow:0 0 0 2px #fecaca}
+.board-head-url{font-size:14px;font-weight:700;word-break:break-all}
+.board-head-meta{font-size:11px;color:#9ab8cc;margin-top:2px}
+.board-head-updated{font-size:11px;color:#7a9ab0;white-space:nowrap}
+.board-head-btns{display:flex;gap:6px;align-items:center}
+.board-customize-btn,.board-remove-btn{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font:inherit;font-size:12px;font-weight:700}
+.board-customize-btn:hover,.board-customize-btn.open{background:rgba(255,255,255,.22)}
+.board-remove-btn:hover{background:rgba(220,38,38,.65);border-color:#fca5a5}
+.customize-bar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:10px 16px;background:#eef3f8;border-bottom:1px solid var(--line)}
+.customize-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-right:2px}
+.section-chip{padding:4px 11px;border-radius:20px;font:inherit;font-size:11px;font-weight:700;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--muted);transition:background 100ms,color 100ms,border-color 100ms;user-select:none}
+.section-chip.active{background:var(--teal);color:#fff;border-color:var(--teal)}
+.section-chip.active.unavail{background:#6eada8;border-color:#6eada8}
+.section-chip:not(.active).unavail{opacity:.45}
+.board-body{padding:14px;display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start}
+.board-body>.bp-card{flex:1;min-width:min(280px,100%)}
+.board-body>.bp-full{flex:1 0 100%;min-width:0}
+.bp-card{border:1px solid var(--line);border-radius:8px;background:var(--panel-2);padding:12px}
+.bp-card-head{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding-bottom:10px;margin-bottom:10px;border-bottom:1px solid var(--line)}
+.bp-ca{width:6px;height:16px;border-radius:3px;background:var(--teal);flex:0 0 auto}
+.bp-ca.blue{background:var(--blue)}
+.bp-ca.amber{background:var(--amber)}
+.bp-ca.rose{background:var(--rose)}
+.bp-ca.green{background:var(--green)}
+.bp-ca.slate{background:var(--slate)}
+.live-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.live-grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.live-grid.four{grid-template-columns:repeat(4,minmax(0,1fr))}
+.live-grid.four .live-value{font-size:18px}
+.live-grid.four .live-label{font-size:9px}
+.live-box{border:1px solid var(--line);border-radius:6px;background:var(--panel);padding:10px;text-align:center}
+.live-box.accent{border-color:#a7f3d0;background:#f0fdf4}
+.live-box.blue-tint{border-color:#bfdbfe;background:#eff6ff}
+.live-label{color:var(--muted);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.live-value{font-size:20px;font-weight:700;color:var(--teal);line-height:1}
+.live-unit{color:var(--muted);font-size:11px;margin-top:2px}
+.live-kwh{color:var(--teal-dark);font-size:12px;font-weight:700;margin-top:4px;border-top:1px solid #a7f3d0;padding-top:4px}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;background:#94a3b8}
+.dot.on{background:#16a34a;box-shadow:0 0 0 2px #bbf7d0}
+.dot.off{background:#dc2626;box-shadow:0 0 0 2px #fecaca}
+.relay-grid{display:flex;flex-direction:column;gap:6px}
+.relay-row{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;border:1px solid var(--line);background:var(--panel);font-size:13px;font-weight:700}
+.relay-row.on{background:#dcfce7;border-color:#86efac}
+.relay-row.off{background:#fee2e2;border-color:#fca5a5}
+.relay-name{display:flex;align-items:center;gap:6px}
+.relay-btn{min-height:28px;min-width:40px;padding:3px 9px;border:none;border-radius:6px;font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.relay-btn:disabled{opacity:.4;cursor:not-allowed}
+.relay-btn.btn-on{background:#16a34a;color:#fff}
+.relay-btn.btn-off{background:#dc2626;color:#fff}
+.relay-btn.btn-on:hover{background:#15803d}
+.relay-btn.btn-off:hover{background:#b91c1c}
+.bp-debug{flex:1 0 100%;background:#1e1e2e;color:#cdd6f4;border-radius:6px;padding:10px 12px;border:1px solid #313244;font-family:monospace;font-size:11px;line-height:1.65}
+.bp-debug table{width:100%;border-collapse:collapse}
+.bp-debug td{padding:1px 4px;vertical-align:top}
+.bp-debug td:first-child{color:#a6adc8;white-space:nowrap;padding-right:14px}
+.bp-debug .dbg-ok{color:#a6e3a1}
+.bp-debug .dbg-fail{color:#f38ba8}
+.bp-debug .dbg-warn{color:#fab387}
+.bp-debug-btns{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.dbg-btn{padding:4px 10px;border-radius:5px;border:1px solid #45475a;background:#313244;color:#cdd6f4;font-size:11px;font-weight:700;cursor:pointer}
+.dbg-btn.fix{color:#a6e3a1;border-color:#a6e3a1}
+.dbg-btn.test{color:#89b4fa;border-color:#89b4fa}
+.dbg-btn.hide{color:#a6adc8}
+.dbg-btn:hover{background:#45475a}
+.bp-status{font-size:11px;color:var(--muted);text-align:right}
+.back-link{display:inline-flex;align-items:center;margin-top:14px;padding:8px 14px;background:var(--slate);color:#fff;border-radius:8px;font:inherit;font-weight:700;text-decoration:none;font-size:13px;box-shadow:0 4px 10px rgba(71,85,105,.18)}
+.back-link:hover{background:#334155}
+.hidden{display:none!important}
+.timer-list{display:flex;flex-direction:column;gap:10px}
+.timer-card{border:1px solid var(--line);border-radius:8px;background:var(--panel-2);overflow:hidden}
+.timer-card-head{display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--panel);border-bottom:1px solid var(--line);font-size:13px;font-weight:700}
+.timer-card-head .timer-id{color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase}
+.timer-badge{margin-left:auto;padding:3px 9px;border-radius:12px;font-size:11px;font-weight:700;text-transform:uppercase}
+.timer-badge.running{background:#dcfce7;color:#15803d;border:1px solid #86efac}
+.timer-badge.inactive{background:#f1f5f9;color:#64748b;border:1px solid var(--line)}
+.timer-badge.disabled{background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5}
+.timer-badge.paused{background:#fef9c3;color:#854d0e;border:1px solid #fde047}
+.timer-body{padding:10px 12px;font-size:13px}
+.timer-detail{color:var(--muted);margin-bottom:6px}
+.timer-detail strong{color:var(--ink)}
+.timer-countdown{margin-top:8px;padding:7px 10px;border-radius:6px;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.timer-countdown.ct-on{background:#dcfce7;color:#15803d}
+.timer-countdown.ct-off{background:#eff6ff;color:#1e40af}
+.timer-countdown.ct-paused{background:#fef9c3;color:#854d0e}
+.timer-ctrl-btn{padding:4px 10px;border:none;border-radius:6px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;flex:0 0 auto}
+.timer-ctrl-btn.pause-btn{background:#fde047;color:#713f12}
+.timer-ctrl-btn.resume-btn{background:#86efac;color:#14532d}
+.timer-ctrl-btn:disabled{opacity:.4;cursor:not-allowed}
+.days-row{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
+.day-pip{padding:2px 6px;border-radius:4px;font-size:11px;font-weight:700;background:var(--panel-2);border:1px solid var(--line);color:var(--muted)}
+.day-pip.active{background:#dbeafe;border-color:#93c5fd;color:#1e40af}
+@media(max-width:700px){.add-bar-row-1,.add-bar-row-2,.board-head{grid-template-columns:1fr}.live-grid.four{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<main class="shell">
+  <header class="topbar">
+    <h1>REST Live Readings</h1>
+    <div class="topbar-sub">Multi-board dashboard &mdash; readings and relay control via <strong>/api/live</strong></div>
+  </header>
+
+  <div class="add-bar">
+    <div class="add-bar-row add-bar-row-1">
+      <input id="new-url" type="url" placeholder="Board URL, e.g. http://192.168.1.50" autocomplete="url">
+      <button class="btn btn-primary" id="add-btn">Add Board</button>
+      <button class="btn btn-secondary" id="this-btn">Add This Host</button>
+    </div>
+    <div class="add-bar-row add-bar-row-2">
+      <input id="new-user" type="text" placeholder="Username (cross-origin only)" autocomplete="username">
+      <input id="new-pass" type="password" placeholder="Password (cross-origin only)" autocomplete="current-password">
+    </div>
+    <div style="font-size:11px;color:var(--muted);">If using <strong>Add This Host</strong>, credentials are taken from your browser session &mdash; no need to enter them here. Credentials are only required when connecting to a board on a different URL.</div>
+  </div>
+
+  <div id="ctx-file" class="hidden" style="margin-top:14px;padding:14px 16px;border-radius:8px;background:#eff6ff;border:1px solid #93c5fd;color:#1e3a5f;font-size:13px;line-height:1.7;">
+    <strong>&#128274; Opened as a local file</strong> &mdash; network requests may be restricted.<br>
+    The most reliable option is to open this page directly from the board's web server:
+    <div style="display:grid;grid-template-columns:1fr auto;gap:6px;margin-top:8px;">
+      <input id="direct-board-ip" type="text" placeholder="Board IP, e.g. 192.168.1.50" style="padding:6px 10px;border:1px solid #93c5fd;border-radius:6px;font:inherit;color:#1e3a5f;background:#fff;" onkeydown="if(event.key==='Enter')openFromBoard()">
+      <button onclick="openFromBoard()" style="padding:6px 14px;background:#2563eb;color:#fff;border:none;border-radius:6px;font:inherit;font-weight:700;cursor:pointer;">Open &#8594;</button>
+    </div>
+    <div style="margin-top:6px;font-size:11px;color:#2563eb;">This navigates to <code>http://&lt;ip&gt;/LiveReadingsRest.html</code> where full access works.</div>
+  </div>
+
+  <div id="boards"></div>
+  <div id="no-boards" class="no-boards"><strong>No boards added yet</strong>Enter a board URL above and click Add Board to start monitoring.</div>
+  <a class="back-link" id="back-link" href="/">&#8592; Back to Config</a>
+</main>
+<script>
+var SECTIONS=[
+  {key:'relays',label:'Relay States'},{key:'temperature',label:'Temperature'},
+  {key:'power',label:'Power Monitor'},{key:'battVoltage',label:'Battery Voltage'},
+  {key:'battCurrent',label:'Battery Current'},{key:'waterFlow',label:'Water Flow'},
+  {key:'pressure',label:'Pressure / Level'},{key:'timers',label:'Scheduled Timers'}
+];
+var DEFAULT_PREFS={relays:true,temperature:true,power:true,battVoltage:true,battCurrent:true,waterFlow:true,pressure:true,timers:true};
+var boards={},nextId=1,jsonpSeq=0;
+
+function isHttpContext(){return location.protocol==='http:'||location.protocol==='https:';}
+function isLocalContext(){return!isHttpContext();}
+function openFromBoard(){
+  var raw=((gel('direct-board-ip')||{}).value||'').trim().replace(/\/+$/,'');
+  if(!raw)return;
+  if(!/^https?:\/\//i.test(raw))raw='http://'+raw;
+  window.open(raw+'/LiveReadingsRest.html','_blank');
+}
+function cleanBase(v){
+  v=String(v||'').trim();
+  if(!v&&isHttpContext())v=location.origin;
+  if(v&&!/^https?:\/\//i.test(v))v='http://'+v;
+  return v.replace(/\/+$/,'');
+}
+function isSameOrigin(base){try{return new URL(base).origin===location.origin;}catch(e){return false;}}
+
+function boardFetchJSONP(board,path){
+  return new Promise(function(resolve,reject){
+    var cb='_j'+(++jsonpSeq);
+    var authQ=(board.username||board.password)?'&_auth='+btoa((board.username||'')+':'+(board.password||'')):'';
+    var sep=path.indexOf('?')>=0?'&':'?';
+    var script=document.createElement('script');
+    var timer=setTimeout(function(){cleanup();reject(new Error('JSONP timeout'));},8000);
+    function cleanup(){clearTimeout(timer);delete window[cb];if(script.parentNode)script.parentNode.removeChild(script);}
+    window[cb]=function(data){cleanup();resolve(data);};
+    script.onerror=function(){cleanup();reject(new Error('JSONP script error'));};
+    script.src=board.base+path+sep+'callback='+cb+authQ;
+    document.head.appendChild(script);
+  });
+}
+function boardFetch(board,path){
+  var opts=isSameOrigin(board.base)
+    ?{credentials:'include',cache:'no-store'}
+    :{credentials:'omit',cache:'no-store',headers:{'Authorization':'Basic '+btoa((board.username||'')+':'+(board.password||''))}};
+  return fetch(board.base+path,opts)
+    .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+    .catch(function(err){
+      if(err.message.toLowerCase().indexOf('fetch')!==-1||err.message.toLowerCase().indexOf('network')!==-1)
+        return boardFetchJSONP(board,path);
+      throw err;
+    });
+}
+function fixed(v,d){var n=Number(v);return isFinite(n)?n.toFixed(d):'-';}
+function kwh(wh){var n=Number(wh);return isFinite(n)?(n/1000).toFixed(3):'-';}
+function gel(id){return document.getElementById(id);}
+function bset(id,v){var e=gel(id);if(e)e.textContent=(v!=null&&v!=='')? String(v):'-';}
+function bshow(id,yes){var e=gel(id);if(e)e.classList.toggle('hidden',!yes);}
+
+function boardHTML(board){
+  var i=board.id;
+  var chips=SECTIONS.map(function(s){
+    var on=board.prefs[s.key]!==false;
+    return '<button class="section-chip'+(on?' active':'')+'" id="bp-chip-'+i+'-'+s.key+'" onclick="toggleSection('+i+',\''+s.key+'\')">'+s.label+'</button>';
+  }).join('');
+  return (
+    '<div class="board-head">'+
+      '<span class="bp-conn-dot" id="bp-dot-'+i+'"></span>'+
+      '<div><div class="board-head-url">'+board.base+'</div>'+
+        '<div class="board-head-meta">Fetching: <span style="opacity:.7">'+board.base+'/api/live</span>'+
+          ' &nbsp;|&nbsp; Node: <span id="bp-node-'+i+'">-</span>'+
+          ' &nbsp;|&nbsp; Uptime: <span id="bp-uptime-'+i+'">-</span></div></div>'+
+      '<div class="board-head-updated" id="bp-updated-'+i+'">-</div>'+
+      '<div class="board-head-btns">'+
+        '<button class="board-customize-btn" id="bp-cbtn-'+i+'" onclick="toggleCustomize('+i+')">&#9881; Customise</button>'+
+        '<button class="board-remove-btn" onclick="removeBoard('+i+')">&#x2715; Remove</button>'+
+      '</div></div>'+
+    '<div class="customize-bar hidden" id="bp-cbar-'+i+'"><span class="customize-label">Visible sections:</span>'+chips+'</div>'+
+    '<div class="board-body">'+
+      '<div class="bp-card" id="bp-sec-relays-'+i+'"><div class="bp-card-head"><div class="bp-ca green"></div>Relay States</div><div class="relay-grid" id="bp-relays-'+i+'"><div style="color:var(--muted);font-size:12px;">Loading&hellip;</div></div></div>'+
+      '<div class="bp-card" id="bp-sec-temp-'+i+'"><div class="bp-card-head"><div class="bp-ca blue"></div>Temperature Sensors</div>'+
+        '<div class="live-grid two">'+
+          '<div class="live-box"><div class="live-label">Sensor 1 (GPIO33)</div><div class="live-value" id="bp-temp1-'+i+'">-</div><div class="live-unit">&#176;C</div></div>'+
+          '<div class="live-box"><div class="live-label">Sensor 2 (GPIO16)</div><div class="live-value" id="bp-temp2-'+i+'">-</div><div class="live-unit">&#176;C</div></div>'+
+        '</div></div>'+
+      '<div class="bp-card bp-full hidden" id="bp-sec-emon-'+i+'"><div class="bp-card-head"><div class="bp-ca amber"></div>Power Monitor (CT Sensor)</div>'+
+        '<div class="live-grid four">'+
+          '<div class="live-box"><div class="live-label">Voltage</div><div class="live-value" id="bp-ct-v-'+i+'">-</div><div class="live-unit">V</div></div>'+
+          '<div class="live-box"><div class="live-label">Current</div><div class="live-value" id="bp-ct-i-'+i+'">-</div><div class="live-unit">A</div></div>'+
+          '<div class="live-box"><div class="live-label">Real Power</div><div class="live-value" id="bp-ct-p-'+i+'">-</div><div class="live-unit">W</div></div>'+
+          '<div class="live-box"><div class="live-label">Power Factor</div><div class="live-value" id="bp-ct-pf-'+i+'">-</div></div>'+
+        '</div>'+
+        '<div class="live-grid" style="margin-top:8px;">'+
+          '<div class="live-box accent"><div class="live-label">Today</div><div class="live-value" id="bp-ct-wh-kwh-'+i+'">-</div><div class="live-unit">kWh</div><div class="live-kwh"><span id="bp-ct-wh-'+i+'">-</span> Wh</div></div>'+
+          '<div class="live-box accent"><div class="live-label">Month to Date</div><div class="live-value" id="bp-ct-mtd-kwh-'+i+'">-</div><div class="live-unit">kWh</div><div class="live-kwh"><span id="bp-ct-mtd-'+i+'">-</span> Wh</div></div>'+
+          '<div class="live-box accent"><div class="live-label">Year to Date</div><div class="live-value" id="bp-ct-ytd-kwh-'+i+'">-</div><div class="live-unit">kWh</div><div class="live-kwh"><span id="bp-ct-ytd-'+i+'">-</span> Wh</div></div>'+
+        '</div></div>'+
+      '<div class="bp-card hidden" id="bp-sec-ads-'+i+'"><div class="bp-card-head"><div class="bp-ca"></div>Battery Voltage (ADS)</div>'+
+        '<div class="live-grid two">'+
+          '<div class="live-box"><div class="live-label">AIN2 Raw</div><div class="live-value" id="bp-ads-v2-'+i+'">-</div><div class="live-unit">V</div></div>'+
+          '<div class="live-box accent"><div class="live-label">AIN2 Scaled</div><div class="live-value" id="bp-ads-sv2-'+i+'">-</div><div class="live-unit">V</div></div>'+
+          '<div class="live-box"><div class="live-label">AIN3 Raw</div><div class="live-value" id="bp-ads-v3-'+i+'">-</div><div class="live-unit">V</div></div>'+
+          '<div class="live-box accent"><div class="live-label">AIN3 Scaled</div><div class="live-value" id="bp-ads-sv3-'+i+'">-</div><div class="live-unit">V</div></div>'+
+        '</div></div>'+
+      '<div class="bp-card hidden" id="bp-sec-hst-'+i+'"><div class="bp-card-head"><div class="bp-ca rose"></div>Battery Charging/Discharging Current</div>'+
+        '<div class="live-grid two">'+
+          '<div class="live-box"><div class="live-label">RMS Current</div><div class="live-value" id="bp-hst-rms-'+i+'">-</div><div class="live-unit">A</div></div>'+
+          '<div class="live-box"><div class="live-label">DC Current</div><div class="live-value" id="bp-hst-dc-'+i+'">-</div><div class="live-unit">A</div></div>'+
+        '</div></div>'+
+      '<div class="bp-card hidden" id="bp-sec-wfs-'+i+'"><div class="bp-card-head"><div class="bp-ca blue"></div>Water Flow Sensor</div>'+
+        '<div class="live-grid">'+
+          '<div class="live-box"><div class="live-label">Pulses/sec</div><div class="live-value" id="bp-wfs-pps-'+i+'">-</div></div>'+
+          '<div class="live-box blue-tint"><div class="live-label">Flow Rate</div><div class="live-value" id="bp-wfs-flow-'+i+'">-</div><div class="live-unit">L/min</div></div>'+
+          '<div class="live-box blue-tint"><div class="live-label">Total Volume</div><div class="live-value" id="bp-wfs-total-'+i+'">-</div><div class="live-unit">L</div></div>'+
+        '</div></div>'+
+      '<div class="bp-card hidden" id="bp-sec-prs-'+i+'"><div class="bp-card-head"><div class="bp-ca slate"></div>Pressure / Level Sensor</div>'+
+        '<div class="live-grid">'+
+          '<div class="live-box"><div class="live-label">ADC Reading</div><div class="live-value" id="bp-prs-adc-'+i+'">-</div></div>'+
+          '<div class="live-box"><div class="live-label">Level</div><div class="live-value" id="bp-prs-cm-'+i+'">-</div><div class="live-unit">cm</div></div>'+
+          '<div class="live-box accent"><div class="live-label">Fill %</div><div class="live-value" id="bp-prs-pct-'+i+'">-</div><div class="live-unit">%</div></div>'+
+        '</div></div>'+
+      '<div class="bp-card bp-full hidden" id="bp-sec-timers-'+i+'"><div class="bp-card-head"><div class="bp-ca amber"></div>Scheduled Timers</div><div class="timer-list" id="bp-timers-'+i+'"><div style="color:var(--muted);font-size:13px;">Loading&hellip;</div></div></div>'+
+      '<div class="bp-debug bp-full hidden" id="bp-debug-'+i+'">'+
+        '<table>'+
+          '<tr><td>Page origin</td><td id="bp-dbg-po-'+i+'">-</td></tr>'+
+          '<tr><td>Board URL</td><td id="bp-dbg-bu-'+i+'">-</td></tr>'+
+          '<tr><td>Same-origin</td><td id="bp-dbg-so-'+i+'">-</td></tr>'+
+          '<tr><td>Fetch mode</td><td id="bp-dbg-fm-'+i+'">-</td></tr>'+
+          '<tr><td>Last error</td><td id="bp-dbg-err-'+i+'">-</td></tr>'+
+          '<tr><td>/api/ping</td><td id="bp-dbg-ping-'+i+'">not tested</td></tr>'+
+        '</table>'+
+        '<div class="bp-debug-btns">'+
+          '<button class="dbg-btn fix" onclick="fixBoardOrigin('+i+')">&#x26A1; Fix: Use This Host</button>'+
+          '<button class="dbg-btn test" onclick="testBoardCORS('+i+')">&#x25CE; Test CORS</button>'+
+          '<button class="dbg-btn hide" onclick="bshow(\'bp-debug-'+i+'\',false)">&#x2715; Hide</button>'+
+        '</div></div>'+
+      '<div class="bp-status bp-full" id="bp-status-'+i+'">Connecting&hellip;</div>'+
+    '</div>'
+  );
+}
+
+function toggleCustomize(boardId){
+  var bar=gel('bp-cbar-'+boardId),btn=gel('bp-cbtn-'+boardId);
+  if(!bar)return;
+  bar.classList.toggle('hidden');
+  if(btn)btn.classList.toggle('open',!bar.classList.contains('hidden'));
+}
+function toggleSection(boardId,key){
+  var board=boards[boardId];if(!board)return;
+  board.prefs[key]=!(board.prefs[key]!==false);
+  applySectionVisibility(board);updateChips(board);savePrefs(board);
+}
+function applySectionVisibility(board){
+  var i=board.id,fm=board.featureMap||{};
+  bshow('bp-sec-relays-'+i,board.prefs.relays!==false);
+  bshow('bp-sec-temp-'+i,board.prefs.temperature!==false);
+  bshow('bp-sec-emon-'+i,!!fm.power&&board.prefs.power!==false);
+  bshow('bp-sec-ads-'+i,!!fm.battVoltage&&board.prefs.battVoltage!==false);
+  bshow('bp-sec-hst-'+i,!!fm.battCurrent&&board.prefs.battCurrent!==false);
+  bshow('bp-sec-wfs-'+i,!!fm.waterFlow&&board.prefs.waterFlow!==false);
+  bshow('bp-sec-prs-'+i,!!fm.pressure&&board.prefs.pressure!==false);
+  bshow('bp-sec-timers-'+i,!!fm.timers&&board.prefs.timers!==false);
+}
+function updateChips(board){
+  var i=board.id,fm=board.featureMap||{};
+  var avail={relays:true,temperature:true,power:!!fm.power,battVoltage:!!fm.battVoltage,battCurrent:!!fm.battCurrent,waterFlow:!!fm.waterFlow,pressure:!!fm.pressure,timers:!!fm.timers};
+  SECTIONS.forEach(function(s){
+    var chip=gel('bp-chip-'+i+'-'+s.key);if(!chip)return;
+    var on=board.prefs[s.key]!==false,av=avail[s.key];
+    chip.className='section-chip'+(on?' active':'')+(av?'':' unavail');
+  });
+}
+function controlRelay(boardId,nb,action){
+  var board=boards[boardId];if(!board)return;
+  var rowId='bp-relay-'+boardId+'-'+nb,row=gel(rowId);
+  if(row)row.querySelectorAll('.relay-btn').forEach(function(b){b.disabled=true;});
+  boardFetch(board,'/RelayControl.json?relay='+nb+'&action='+action)
+    .then(function(d){
+      var on=String(d.state).toUpperCase()==='ON';
+      if(row){
+        row.className='relay-row '+(on?'on':'off');
+        var nm=row.querySelector('.relay-name');
+        if(nm)nm.innerHTML='<span class="dot '+(on?'on':'off')+'"></span>Relay '+nb+': <span>'+d.state+'</span>';
+        row.querySelectorAll('.relay-btn').forEach(function(b){b.disabled=false;});
+      }
+    }).catch(function(){if(row)row.querySelectorAll('.relay-btn').forEach(function(b){b.disabled=false;});});
+}
+function renderRelays(board,relays){
+  var c=gel('bp-relays-'+board.id);if(!c)return;
+  if(!relays||!relays.length){c.textContent='No relays.';return;}
+  if(!c.querySelector('.relay-row'))c.innerHTML='';
+  relays.forEach(function(r){
+    var on=String(r.state).toUpperCase()==='ON',rowId='bp-relay-'+board.id+'-'+r.id,ex=gel(rowId);
+    if(ex){
+      ex.className='relay-row '+(on?'on':'off');
+      var nm=ex.querySelector('.relay-name');
+      if(nm)nm.innerHTML='<span class="dot '+(on?'on':'off')+'"></span>Relay '+r.id+': <span>'+r.state+'</span>';
+    }else{
+      var row=document.createElement('div');
+      row.id=rowId;row.className='relay-row '+(on?'on':'off');
+      row.innerHTML='<div class="relay-name"><span class="dot '+(on?'on':'off')+'"></span>Relay '+r.id+': <span>'+r.state+'</span></div>'+
+        '<button class="relay-btn btn-on" onclick="controlRelay('+board.id+','+r.id+',\'ON\')">ON</button>'+
+        '<button class="relay-btn btn-off" onclick="controlRelay('+board.id+','+r.id+',\'OFF\')">OFF</button>';
+      c.appendChild(row);
+    }
+  });
+}
+function fmtCD(s){
+  if(!s||s<0)return'—';
+  var d=Math.floor(s/86400),h=Math.floor((s%86400)/3600),m=Math.floor((s%3600)/60),sec=s%60;
+  return d>0?d+'d '+h+'h':h>0?h+'h '+m+'m':m>0?m+'m '+sec+'s':sec+'s';
+}
+function daysLabel(days){
+  return'<div class="days-row">'+['Mo','Tu','We','Th','Fr','Sa','Su'].map(function(d){
+    return'<span class="day-pip'+(days&&days[d]?' active':'')+'">' +d+'</span>';
+  }).join('')+'</div>';
+}
+function renderTimers(board,timers){
+  var c=gel('bp-timers-'+board.id);if(!c)return;
+  if(!timers){c.innerHTML='<div style="color:var(--muted);font-size:13px;">Timer data not available.</div>';return;}
+  var found=(timers||[]).filter(function(t){return t.exists;});
+  if(!found.length){c.innerHTML='<div style="color:var(--muted);font-size:13px;">No timers configured.</div>';return;}
+  c.innerHTML='';
+  found.forEach(function(t){
+    var bc,bl;
+    if(!t.enabled){bc='disabled';bl='Disabled';}
+    else if(t.timerPaused){bc='paused';bl='Paused';}
+    else if(t.timerActive){bc='running';bl='Running';}
+    else{bc='inactive';bl='Inactive';}
+    var sched='';
+    if(t.type===1)sched='Date Range: <strong>'+t.dateFrom+' → '+t.dateTo+'</strong>';
+    else if(t.type===2)sched='Daily: <strong>'+t.dateFrom+' → '+t.dateTo+'</strong>';
+    else if(t.type===3)sched='Weekly: '+daysLabel(t.days);
+    else if(t.type===4)sched='Monthly on day <strong>'+t.monthDay+'</strong>';
+    else if(t.type===5)sched='Yearly';
+    else sched='Type: <strong>'+(t.typeName||'—')+'</strong>';
+    var dh=t.markHours||0,dm=t.markMinutes||0;
+    var dur=(dh+dm)>0?' <span style="font-weight:400;color:var(--muted);font-size:11px;">'+(dh>0?dh+'h ':'')+( dm>0?dm+'m':'')+ ' duration)</span>':'';
+    var cc='',ct='',cb='';
+    if(!t.enabled){ct='Timer is disabled.';}
+    else if(t.timerPaused){cc='ct-paused';ct='⏸ Paused — would end in '+fmtCD(t.secondsToOff);cb='<button class="timer-ctrl-btn resume-btn" onclick="tmrControl('+board.id+','+t.relay+',\'resume\',this)">Resume</button>';}
+    else if(t.timerActive){cc='ct-on';ct='▶ Active — ends in '+fmtCD(t.secondsToOff);cb='<button class="timer-ctrl-btn pause-btn" onclick="tmrControl('+board.id+','+t.relay+',\'pause\',this)">Pause</button>';}
+    else{cc='ct-off';ct='◷ Next activation in '+fmtCD(t.secondsToOn);}
+    var card=document.createElement('div');card.className='timer-card';
+    card.innerHTML=
+      '<div class="timer-card-head"><span class="timer-id">Timer '+t.id+'</span>&nbsp;→&nbsp;Relay '+t.relay+
+      '&nbsp;|&nbsp;<strong>'+t.timeFrom+' – '+t.timeTo+'</strong>'+dur+
+      '<span class="timer-badge '+bc+'">'+bl+'</span></div>'+
+      '<div class="timer-body"><div class="timer-detail">'+sched+'</div>'+
+      (t.enabled?'<div class="timer-countdown '+cc+'">'+ct+cb+'</div>':
+      '<div style="color:var(--muted);font-size:12px;">Enable this timer in Schedule Relay Timers to activate it.</div>')+
+      '</div>';
+    c.appendChild(card);
+  });
+}
+function tmrControl(boardId,relay,action,btn){
+  var board=boards[boardId];if(!board)return;
+  if(btn)btn.disabled=true;
+  boardFetch(board,'/TimerControl.json?relay='+relay+'&action='+action)
+    .then(function(){pollBoard(board);}).catch(function(){if(btn)btn.disabled=false;});
+}
+function applyLive(board,d){
+  var i=board.id,f=d.features||{},sys=d.system||{},temp=d.temperature||{},pwr=d.power||{},bv=d.batteryVoltage||{},bc=d.batteryCurrent||{},wf=d.waterFlow||{},prs=d.pressure||{};
+  board.featureMap={
+    power:!!(f.emonlib||d.power),battVoltage:!!(f.ads1x15||d.batteryVoltage),
+    battCurrent:!!(f.adsDCCurrent||f.hst||d.batteryCurrent),
+    waterFlow:!!(f.waterFlowSensor||d.waterFlow),pressure:!!(f.pressureSensor||d.pressure),timers:true
+  };
+  var dot=gel('bp-dot-'+i);if(dot)dot.className='bp-conn-dot on';
+  bset('bp-node-'+i,sys.nodeId||sys.mac);bset('bp-uptime-'+i,sys.uptime);
+  bset('bp-updated-'+i,new Date().toLocaleTimeString());
+  renderRelays(board,d.relays);
+  bset('bp-temp1-'+i,fixed(temp.sensor1,2));bset('bp-temp2-'+i,fixed(temp.sensor2,2));
+  bset('bp-ct-v-'+i,fixed(pwr.voltage,1));bset('bp-ct-i-'+i,fixed(pwr.current,2));
+  bset('bp-ct-p-'+i,fixed(pwr.realPower,1));bset('bp-ct-pf-'+i,fixed(pwr.powerFactor,2));
+  bset('bp-ct-wh-'+i,fixed(pwr.wh,2));bset('bp-ct-mtd-'+i,fixed(pwr.mtdWh,2));bset('bp-ct-ytd-'+i,fixed(pwr.ytdWh,2));
+  bset('bp-ct-wh-kwh-'+i,kwh(pwr.wh));bset('bp-ct-mtd-kwh-'+i,kwh(pwr.mtdWh));bset('bp-ct-ytd-kwh-'+i,kwh(pwr.ytdWh));
+  bset('bp-ads-v2-'+i,fixed(bv.ain2Raw,4));bset('bp-ads-sv2-'+i,fixed(bv.ain2Scaled,2));
+  bset('bp-ads-v3-'+i,fixed(bv.ain3Raw,4));bset('bp-ads-sv3-'+i,fixed(bv.ain3Scaled,2));
+  bset('bp-hst-rms-'+i,fixed(bc.rmsAmps,2));bset('bp-hst-dc-'+i,fixed(bc.dcAmps,2));
+  if(wf.pulses!==undefined){
+    var pps='-';
+    if(board.wfsPrev!==null){pps=wf.pulses-board.wfsPrev;if(pps<0)pps+=0x100000000;}
+    board.wfsPrev=wf.pulses;
+    bset('bp-wfs-pps-'+i,pps);bset('bp-wfs-flow-'+i,fixed(wf.flowRateLpm,1));bset('bp-wfs-total-'+i,fixed(wf.totalLitres,3));
+  }
+  bset('bp-prs-adc-'+i,fixed(prs.adc,1));bset('bp-prs-cm-'+i,fixed(prs.levelCm,1));bset('bp-prs-pct-'+i,fixed(prs.fillPercent,1));
+  renderTimers(board,d.timers);
+  applySectionVisibility(board);updateChips(board);
+  bshow('bp-debug-'+i,false);bset('bp-status-'+i,'Updated '+new Date().toLocaleTimeString());
+}
+function updateDebugInfo(board,rawErr){
+  var i=board.id,same=isSameOrigin(board.base);
+  var pol=location.origin+(location.protocol==='content:'?' ⚠ media viewer — open with Chrome':'');
+  bset('bp-dbg-po-'+i,pol);bset('bp-dbg-bu-'+i,board.base);
+  var soEl=gel('bp-dbg-so-'+i);
+  if(soEl){soEl.textContent=same?'YES — same-origin, no preflight':'NO — cross-origin, preflight required';soEl.className=same?'dbg-ok':'dbg-fail';}
+  bset('bp-dbg-fm-'+i,same?'credentials:include (browser stored auth, no Authorization header)':'credentials:omit + Authorization header (triggers OPTIONS preflight)');
+  if(rawErr!==undefined){var el=gel('bp-dbg-err-'+i);if(el){el.textContent=rawErr;el.className=rawErr.indexOf('HTTP 2')===0?'dbg-ok':'dbg-fail';}}
+}
+function fixBoardOrigin(boardId){
+  var board=boards[boardId];if(!board)return;
+  clearInterval(board.pollHandle);board.pollHandle=null;
+  board.base=cleanBase(location.origin);
+  var urlEl=document.querySelector('#board-'+boardId+' .board-head-url');if(urlEl)urlEl.textContent=board.base;
+  var metaEl=document.querySelector('#board-'+boardId+' .board-head-meta');
+  if(metaEl)metaEl.innerHTML='Fetching: <span style="opacity:.7">'+board.base+'/api/live</span>'+
+    ' &nbsp;|&nbsp; Node: <span id="bp-node-'+boardId+'">-</span>'+
+    ' &nbsp;|&nbsp; Uptime: <span id="bp-uptime-'+boardId+'">-</span>';
+  bset('bp-status-'+boardId,'Switched to '+board.base+' — connecting…');
+  saveBoardUrls();updateDebugInfo(board);pollBoard(board);
+  board.pollHandle=setInterval(function(){pollBoard(board);},2000);
+}
+function testBoardCORS(boardId){
+  var board=boards[boardId];if(!board)return;
+  var el=gel('bp-dbg-ping-'+boardId);
+  if(el){el.textContent='step 1: reachability…';el.className='dbg-warn';}
+  fetch(board.base+'/api/ping',{mode:'no-cors',cache:'no-store'})
+    .then(function(){
+      if(el){el.textContent='step 2: CORS/PNA headers…';el.className='dbg-warn';}
+      fetch(board.base+'/api/ping',{credentials:'omit',cache:'no-store'})
+        .then(function(r){if(el){el.textContent=r.ok?'✓ CORS OK ('+r.status+') — ACAO:* and ACAPN present':'✗ HTTP '+r.status+' — check headers';el.className=r.ok?'dbg-ok':'dbg-fail';}})
+        .catch(function(){if(el){el.textContent='✗ Server reachable BUT CORS/PNA blocked — firmware needs ACAO:* and Access-Control-Allow-Private-Network:true on OPTIONS responses';el.className='dbg-fail';}});
+    })
+    .catch(function(){if(el){el.textContent=isLocalContext()?'✗ Network blocked by app viewer. Open with Chrome: long-press file → Open with → Chrome':'✗ Server unreachable at '+board.base+' — wrong URL or board offline?';el.className='dbg-fail';}});
+}
+function diagError(board,msg){
+  if(msg==='HTTP 401')return isSameOrigin(board.base)?'Not authenticated — open '+board.base+' in this browser first to log in, then return here':'HTTP 401 — wrong username or password';
+  if(msg.toLowerCase().indexOf('fetch')===-1)return msg;
+  if(!isSameOrigin(board.base))return'Cross-origin blocked. Open this page from the board ('+board.base+'/LiveReadingsRest.html) or flash the firmware update to enable CORS';
+  return'Network error — board unreachable at '+board.base;
+}
+function pollBoard(board){
+  boardFetch(board,'/api/live')
+    .then(function(d){if(!boards[board.id])return;applyLive(board,d);})
+    .catch(function(err){
+      if(!boards[board.id])return;
+      var dot=gel('bp-dot-'+board.id);if(dot)dot.className='bp-conn-dot off';
+      updateDebugInfo(board,err.message);bshow('bp-debug-'+board.id,true);
+      var msg=diagError(board,err.message);
+      var rc=gel('bp-relays-'+board.id);
+      if(rc&&!rc.querySelector('.relay-row'))rc.innerHTML='<div style="color:var(--rose);font-size:12px;">'+msg+'</div>';
+      bset('bp-status-'+board.id,msg+' — retrying…');
+    });
+}
+function addBoard(url,username,password){
+  url=cleanBase(url);
+  if(!url){alert('Please enter a valid board URL.');return;}
+  for(var id in boards){if(boards[id].base===url){alert('This board is already added.');return;}}
+  var board={id:nextId++,base:url,username:username||'',password:password||'',pollHandle:null,wfsPrev:null,featureMap:{},prefs:JSON.parse(JSON.stringify(DEFAULT_PREFS))};
+  loadPrefs(board);boards[board.id]=board;
+  var panel=document.createElement('div');panel.className='board-panel';panel.id='board-'+board.id;panel.innerHTML=boardHTML(board);
+  gel('boards').appendChild(panel);
+  bshow('no-boards',false);
+  updateDebugInfo(board);
+  if(!isSameOrigin(board.base))bshow('bp-debug-'+board.id,true);
+  pollBoard(board);
+  board.pollHandle=setInterval(function(){pollBoard(board);},2000);
+  saveBoardUrls();
+}
+function removeBoard(id){
+  var board=boards[id];if(!board)return;
+  delete boards[id];clearInterval(board.pollHandle);board.pollHandle=null;
+  var panel=gel('board-'+id);if(panel)panel.remove();
+  if(!Object.keys(boards).length)bshow('no-boards',true);
+  saveBoardUrls();
+}
+function prefKey(board){return'bpref_'+board.base;}
+function boardUrlsKey(){return'restLiveBoardUrls';}
+function savePrefs(board){try{localStorage.setItem(prefKey(board),JSON.stringify(board.prefs));}catch(e){}}
+function loadPrefs(board){
+  try{var s=JSON.parse(localStorage.getItem(prefKey(board))||'null');
+    if(s&&typeof s==='object')SECTIONS.forEach(function(sec){if(typeof s[sec.key]==='boolean')board.prefs[sec.key]=s[sec.key];});
+  }catch(e){}
+}
+function saveBoardUrls(){
+  try{var e=Object.keys(boards).map(function(id){var b=boards[id];return{url:b.base,username:b.username,password:b.password};});
+    localStorage.setItem(boardUrlsKey(),JSON.stringify(e));}catch(e){}
+}
+function loadSavedBoards(){
+  try{var s=JSON.parse(localStorage.getItem(boardUrlsKey())||'[]');
+    if(Array.isArray(s))s.forEach(function(e){
+      if(typeof e==='string')addBoard(e,'','');
+      else if(e&&e.url)addBoard(e.url,e.username,e.password);
+    });
+  }catch(e){}
+}
+document.addEventListener('DOMContentLoaded',function(){
+  if(isLocalContext()){bshow('ctx-file',true);var t=gel('this-btn');if(t)t.disabled=true;}
+  if(isHttpContext())gel('back-link').href=location.origin+'/';
+  function doAdd(url){var u=gel('new-user').value.trim(),p=gel('new-pass').value;addBoard(url,u,p);gel('new-url').value='';}
+  gel('add-btn').addEventListener('click',function(){var u=gel('new-url').value.trim();if(u)doAdd(u);});
+  gel('this-btn').addEventListener('click',function(){if(location.protocol.indexOf('http')===0)doAdd(location.origin);});
+  gel('new-url').addEventListener('keydown',function(e){if(e.key==='Enter')gel('add-btn').click();});
+  loadSavedBoards();
+});
+</script>
+</body>
+</html>

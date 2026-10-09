@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="/rust-ui.js"></script>
+<title>Firmware Maintenance</title>
+<style>
+:root{--page:#edf1f5;--ink:#152033;--muted:#687589;--panel:#fff;--panel-2:#f8fafc;--line:#d9e1ea;--field:#fdfefe;--teal:#0f766e;--teal-dark:#0a5f59;--rose:#be123c;--green:#15803d;--slate:#475569;--shadow-sm:0 2px 8px rgba(21,32,51,.06);--shadow:0 18px 45px rgba(21,32,51,.12)}
+*{box-sizing:border-box}
+html{background:var(--page)}
+body{margin:0;min-height:100vh;color:var(--ink);font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.42;background:linear-gradient(180deg,#dfe9f3 0,#edf1f5 320px),var(--page)}
+.shell{width:min(720px,calc(100vw - 32px));margin:0 auto;padding:24px 0 36px}
+.topbar{color:#fff;border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:22px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;background:linear-gradient(135deg,#152033,#103f49,#0f766e);box-shadow:var(--shadow)}
+.topbar h1{margin:0;font-size:26px;font-weight:700}
+.topbar .hint{margin-top:7px;color:#cfe0ea}
+.topbar-right{color:#e6eef5;font-size:13px;text-align:right;white-space:nowrap}
+.back-link{color:#a8d8cf;font-size:13px;text-decoration:none;white-space:nowrap;display:block;margin-top:6px}
+.back-link:hover{color:#fff}
+.card{margin-top:16px;background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow-sm);padding:20px}
+.card h2{position:relative;display:flex;align-items:center;gap:10px;margin:-2px 0 16px;padding-bottom:12px;border-bottom:1px solid var(--line);font-size:18px;font-weight:700}
+.card h2::before{content:"";width:10px;height:28px;border-radius:6px;background:var(--teal);flex:0 0 auto}
+.hint-text{color:var(--muted);font-size:13px;margin:0 0 12px}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+label{color:var(--muted);font-size:12px;font-weight:700}
+input[type="file"]{min-height:38px;padding:8px;border:1px dashed #aab7c6;border-radius:8px;background:var(--panel-2);width:100%}
+.upload-progress{display:block;margin:10px 0 2px}
+.upload-progress-bar{height:10px;overflow:hidden;border:1px solid #b6c7d9;border-radius:999px;background:#eef4fa}
+.upload-progress-fill{width:100%;height:100%}
+.upload-progress-text{margin-top:5px;color:var(--muted);font-size:12px;font-weight:700}
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+.btn-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:6px}
+button,input[type="submit"],.button-link{min-height:38px;border:1px solid transparent;border-radius:8px;background:var(--teal);color:#fff;padding:8px 15px;font:inherit;font-weight:700;cursor:pointer;text-decoration:none;text-align:center;box-shadow:0 5px 14px rgba(15,118,110,.22);display:inline-block;transition:transform 120ms,box-shadow 120ms,background 120ms}
+button:hover,input[type="submit"]:hover,.button-link:hover{background:var(--teal-dark);box-shadow:0 7px 18px rgba(15,118,110,.28);transform:translateY(-1px)}
+button:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
+.secondary{background:var(--slate)!important;box-shadow:0 5px 14px rgba(71,85,105,.18)!important}
+.danger{background:var(--rose)!important;box-shadow:0 4px 12px rgba(190,18,60,.2)!important}
+.divider{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+@media(max-width:600px){.topbar{flex-direction:column;align-items:flex-start}.topbar-right{text-align:left}}
+</style>
+</head>
+<body>
+<main class="shell">
+  <header class="topbar">
+    <div>
+      <h1>&#128296; Firmware Maintenance</h1>
+      <div class="hint">Update firmware, flash filesystem images, and download backups.</div>
+      <div class="hint">Heap: <strong id="hb-free">&mdash;</strong> B | min: <strong id="hb-min">&mdash;</strong> B | blk: <strong id="hb-blk">&mdash;</strong> B</div>
+    </div>
+    <div class="topbar-right">
+      <a class="back-link" href="/">&#8592; Back to Config</a>
+    </div>
+  </header>
+
+  <div class="card">
+    <h2>Firmware Backup</h2>
+    <p class="hint-text">Download the currently running firmware or filesystem image from the device. Files can be re-flashed using PlatformIO or esptool.</p>
+    <div class="btn-row">
+      <a class="button-link" href="/api/firmware/download" download="firmware.bin">&#8595; Download Firmware</a>
+      <a class="button-link secondary" href="/api/filesystem/download" download="littlefs.bin">&#8595; Download Filesystem</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Firmware Update</h2>
+    <p class="hint-text">Upload a compiled firmware binary (.bin) to the device. The device will flash it and reboot automatically.</p>
+    <form method="post" action="/update" enctype="multipart/form-data" onsubmit="return uploadFirmware(this)">
+      <div class="field">
+        <label for="FileUpload1">Firmware File</label>
+        <input type="file" name="update" id="FileUpload1" accept=".bin">
+        <div class="upload-progress" id="FirmwareUploadProgress" style="display:none">
+          <div class="upload-progress-bar"><div class="upload-progress-fill" id="FirmwareUploadFill"></div></div>
+          <div class="upload-progress-text" id="FirmwareUploadText"></div>
+        </div>
+        <div id="FirmwareDebug" style="display:none;font-size:11px;color:#555;margin-top:6px;font-family:monospace;white-space:pre-wrap;"></div>
+      </div>
+      <div class="actions"><input type="submit" name="firmwareload" value="Upload And Update"></div>
+    </form>
+    <div class="divider">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;">Core Dump</div>
+      <div id="CoreDumpStatus" style="font-size:12px;color:var(--muted);margin-bottom:8px;">Checking&hellip;</div>
+      <button type="button" id="EraseCoreDumpBtn" class="danger" style="min-width:100%;display:none" onclick="eraseCoreDump()">Erase Core Dump</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Filesystem Update</h2>
+    <p class="hint-text">Upload a matching LittleFS image (.bin) to replace the web UI files. Controller settings in NVS are preserved. The device validates the image, then reboots to install it.</p>
+    <form method="post" action="/updatefs" enctype="multipart/form-data" onsubmit="return uploadFilesystem(this)">
+      <div class="field">
+        <label for="FsFileUpload">Filesystem Image (.bin)</label>
+        <input type="file" name="update" id="FsFileUpload" accept=".bin">
+        <div class="upload-progress" id="FsUploadProgress" style="display:none">
+          <div class="upload-progress-bar"><div class="upload-progress-fill" id="FsUploadFill"></div></div>
+          <div class="upload-progress-text" id="FsUploadText"></div>
+        </div>
+      </div>
+      <div class="actions"><input type="submit" value="Upload Filesystem"></div>
+    </form>
+  </div>
+</main>
+<script>
+// OTA firmware upload
+(function(){
+  var PCT="\x25",_t=null,_p=0,_d=false;
+  function _dbg(m){var e=document.getElementById("FirmwareDebug");if(e)e.textContent+=m+"\n";console.log("[OTA] "+m);}
+  function _bar(pct,lbl){
+    var fill=document.getElementById("FirmwareUploadFill"),text=document.getElementById("FirmwareUploadText");
+    _p=Math.max(0,Math.min(100,pct|0));
+    var bar=fill?fill.parentElement:document.getElementById("FirmwareUploadProgress");
+    if(bar){var p=_p+PCT;bar.style.background="linear-gradient(to right,#0f766e "+p+",#eef4fa "+p+")";}
+    if(text)text.textContent=(lbl!==undefined)?lbl:(_p+PCT);
+  }
+  function _stop(){if(_t){clearInterval(_t);_t=null;}}
+  function _tick(cap,step,ms){_stop();_t=setInterval(function(){if(_p<cap)_bar(Math.min(cap,_p+step));},ms);}
+  function _fin(m){if(_d){_dbg("(done: "+m+")");return;}_d=true;_stop();_bar(100,m);_dbg(m);}
+  function _show(){
+    var p=document.getElementById("FirmwareUploadProgress"),d=document.getElementById("FirmwareDebug");
+    if(p)p.style.display="";if(d)d.style.display="";
+  }
+  window.uploadFirmware=function(form){
+    var fi=document.getElementById("FileUpload1");
+    if(!form||!fi)return true;
+    if(form.getAttribute("data-uploading")==="1")return false;
+    if(!fi.files||!fi.files.length){alert("Please choose a firmware file.");fi.focus();return false;}
+    _show();
+    _dbg("Uploading: "+fi.files[0].name+" ("+fi.files[0].size+" bytes)");
+    form.setAttribute("data-uploading","1");
+    _p=0;_d=false;_bar(0,"Uploading...");_tick(90,1,600);
+    var xhr=new XMLHttpRequest();xhr.open("POST",form.action||"/update",true);
+    xhr.upload.onprogress=function(ev){if(!ev.lengthComputable||!ev.total)return;_stop();_bar(Math.round(ev.loaded/ev.total*90),"Uploading "+Math.round(ev.loaded/ev.total*100)+PCT);};
+    xhr.upload.onloadend=function(){_stop();_bar(Math.max(_p,90),"Flashing...");_tick(97,1,1200);};
+    xhr.onreadystatechange=function(){
+      if(xhr.readyState!==4)return;
+      var body=(xhr.responseText||"").trim();
+      _dbg("server: HTTP "+xhr.status+(body?" | "+body:""));
+      if(xhr.status>=200&&xhr.status<300){
+        var ok=(body.length===0)||body.toUpperCase().indexOf("OK")===0||(body.toUpperCase().indexOf("OK")!==-1&&body.toUpperCase().indexOf("FAIL")===-1);
+        _fin(ok?"200 OK — Update successful. Rebooting...":"Update FAILED — "+body);
+      }else if(xhr.status===0){
+        _fin("Connection closed — update outcome unknown. Check the device before retrying.");
+        form.removeAttribute("data-uploading");
+      }else{
+        _fin("Update failed (HTTP "+xhr.status+(body?" — "+body:"")+")");
+        form.removeAttribute("data-uploading");
+      }
+    };
+    xhr.onerror=function(){_fin("Connection error — update outcome unknown.");form.removeAttribute("data-uploading");};
+    xhr.setRequestHeader('Content-Type','application/octet-stream');xhr.send(fi.files[0]);return false;
+  };
+})();
+
+// Filesystem image upload
+(function(){
+  var PCT="\x25",_t=null,_p=0,_d=false;
+  function _bar(pct,lbl){
+    var fill=document.getElementById("FsUploadFill"),text=document.getElementById("FsUploadText");
+    _p=Math.max(0,Math.min(100,pct|0));
+    var bar=fill?fill.parentElement:document.getElementById("FsUploadProgress");
+    if(bar){var p=_p+PCT;bar.style.background="linear-gradient(to right,#0f766e "+p+",#eef4fa "+p+")";}
+    if(text)text.textContent=(lbl!==undefined)?lbl:(_p+PCT);
+  }
+  function _stop(){if(_t){clearInterval(_t);_t=null;}}
+  function _tick(cap,step,ms){_stop();_t=setInterval(function(){if(_p<cap)_bar(Math.min(cap,_p+step));},ms);}
+  function _fin(m){if(_d)return;_d=true;_stop();_bar(100,m);}
+  function _show(){var p=document.getElementById("FsUploadProgress");if(p)p.style.display="";}
+  window.uploadFilesystem=function(form){
+    var fi=document.getElementById("FsFileUpload");
+    if(!form||!fi)return true;
+    if(form.getAttribute("data-uploading")==="1")return false;
+    if(!fi.files||!fi.files.length){alert("Please choose a filesystem image file.");fi.focus();return false;}
+    _show();
+    form.setAttribute("data-uploading","1");
+    _p=0;_d=false;_bar(0,"Uploading...");_tick(90,1,600);
+    var xhr=new XMLHttpRequest();xhr.open("POST","/updatefs",true);
+    xhr.upload.onprogress=function(ev){if(!ev.lengthComputable||!ev.total)return;_stop();_bar(Math.round(ev.loaded/ev.total*90),"Uploading "+Math.round(ev.loaded/ev.total*100)+PCT);};
+    xhr.upload.onloadend=function(){_stop();_bar(Math.max(_p,90),"Flashing...");_tick(97,1,1200);};
+    xhr.onreadystatechange=function(){
+      if(xhr.readyState!==4)return;
+      var body=(xhr.responseText||"").trim();
+      if(xhr.status>=200&&xhr.status<300){
+        var ok=body.toUpperCase().indexOf("FAIL")===-1;
+        _fin(ok?"OK — Filesystem updated. Rebooting...":"FAILED — "+body);
+      }else if(xhr.status===0){
+        _fin("Connection closed — update outcome unknown. Check the device before retrying.");
+        form.removeAttribute("data-uploading");
+      }else{
+        _fin("Failed (HTTP "+xhr.status+(body?" — "+body:"")+")");
+        form.removeAttribute("data-uploading");
+      }
+    };
+    xhr.onerror=function(){_fin("Connection error.");form.removeAttribute("data-uploading");};
+    xhr.setRequestHeader('Content-Type','application/octet-stream');xhr.send(fi.files[0]);return false;
+  };
+}());
+
+function refreshCoreDumpStatus(){
+  var req=new XMLHttpRequest();req.open("GET","/CoreDumpStatus.json",true);
+  req.onreadystatechange=function(){
+    if(req.readyState!==4)return;
+    var el=document.getElementById("CoreDumpStatus"),btn=document.getElementById("EraseCoreDumpBtn");
+    if(!el)return;
+    if(req.status!==200){el.textContent="Status unavailable.";return;}
+    var d={};try{d=JSON.parse(req.responseText);}catch(e){}
+    if(d.supported===false){el.textContent="Crash dump storage is not enabled.";if(btn)btn.style.display="none";return;}
+    if(d.hasDump){
+      el.textContent="Crash dump present — task: "+d.task+", cause: "+d.excCause+", EPC1: 0x"+(d.epc1>>>0).toString(16).toUpperCase();
+      el.style.color="var(--rose)";
+      if(btn)btn.style.display="";
+    }else{
+      el.textContent="No crash dump stored.";
+      el.style.color="var(--muted)";
+      if(btn)btn.style.display="none";
+    }
+  };req.send();
+}
+
+function eraseCoreDump(){
+  if(!confirm("Erase the stored crash dump from flash?"))return;
+  var btn=document.getElementById("EraseCoreDumpBtn");
+  if(btn){btn.disabled=true;btn.textContent="Erasing…";}
+  var req=new XMLHttpRequest();req.open("POST","/EraseCoreDump.json",true);
+  req.onreadystatechange=function(){
+    if(req.readyState!==4)return;
+    var d={};try{d=JSON.parse(req.responseText);}catch(e){}
+    if(btn){btn.disabled=false;btn.textContent="Erase Core Dump";}
+    alert(d.ok?"Core dump erased successfully.":(d.message||"Erase failed."));
+    refreshCoreDumpStatus();
+  };req.send();
+}
+
+(function(){function ph(){fetch('/api/heap').then(function(r){return r.json();}).then(function(d){var f=document.getElementById('hb-free'),m=document.getElementById('hb-min'),b=document.getElementById('hb-blk');if(f&&d.heap!=null)f.textContent=Number(d.heap).toLocaleString();if(m&&d.heapMin!=null)m.textContent=Number(d.heapMin).toLocaleString();if(b&&d.heapMaxBlk!=null)b.textContent=Number(d.heapMaxBlk).toLocaleString();}).catch(function(){});}ph();setInterval(ph,30000);}());
+
+refreshCoreDumpStatus();
+</script>
+</body>
+</html>

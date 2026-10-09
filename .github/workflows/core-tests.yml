@@ -1,0 +1,17 @@
+name: Rust control core tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    env:
+      CARGO_TARGET_DIR: target
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Test hardware-independent control behavior
+        run: cargo +stable test --locked -p node-core --target x86_64-unknown-linux-gnu --config 'unstable.build-std=[]'

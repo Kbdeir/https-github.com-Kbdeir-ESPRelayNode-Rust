@@ -1,0 +1,225 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+<script src="/rust-ui.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Input Configuration</title>
+<style>
+:root{--page:#edf1f5;--ink:#152033;--muted:#687589;--panel:#fff;--panel-2:#f8fafc;--line:#d9e1ea;--field:#fdfefe;--teal:#0f766e;--teal-dark:#0a5f59;--blue:#2563eb;--amber:#b7791f;--rose:#be123c;--green:#15803d;--slate:#475569;--shadow-sm:0 2px 8px rgba(21,32,51,.06);--shadow:0 18px 45px rgba(21,32,51,.12)}
+*{box-sizing:border-box}
+html{background:var(--page)}
+body{margin:0;min-height:100vh;color:var(--ink);font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.42;background:linear-gradient(180deg,#dfe9f3 0,#edf1f5 320px),var(--page)}
+.shell{width:min(1220px,calc(100vw - 32px));margin:0 auto;padding:24px 0 36px}
+.topbar{position:relative;overflow:hidden;color:#fff;border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:24px 26px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:center;background:linear-gradient(135deg,#152033,#103f49,#0f766e);box-shadow:var(--shadow);max-width:820px;margin:0 auto}
+.topbar h1{margin:0;font-size:28px;font-weight:700}
+.topbar .hint{margin-top:7px;color:#cfe0ea}
+.topbar .meta{min-width:230px;color:#e6eef5;font-size:13px;text-align:right;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:10px 12px}
+.wrap{margin-top:16px;max-width:820px;margin-left:auto;margin-right:auto}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow-sm);padding:18px;margin-bottom:16px}
+.card h2{position:relative;display:flex;align-items:center;gap:10px;margin:-2px 0 16px;padding-bottom:12px;color:var(--ink);border-bottom:1px solid var(--line);font-size:18px;font-weight:700}
+.card h2::before{content:"";width:10px;height:28px;border-radius:6px;background:var(--teal);flex:0 0 auto}
+.card h2 .help-link{margin-left:auto;padding:5px 9px;border:1px solid #b8c7d7;border-radius:6px;color:#0f766e;background:#f8fafc;font-size:12px;font-weight:700;line-height:1;text-decoration:none}
+.card h2 .help-link:hover{color:#fff;background:var(--teal);border-color:var(--teal)}
+.subhead{margin:20px 0 10px;padding:7px 10px;color:#334155;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;font-weight:700;font-size:12px;text-transform:uppercase}
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 16px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field.full{grid-column:1/-1}
+.hidden-field{display:none}
+label{color:var(--muted);font-size:12px;font-weight:700}
+input[type="text"],input[type="number"],select{min-height:38px;border:1px solid #bac7d5;border-radius:8px;background:var(--field);color:var(--ink);padding:8px 10px;font:inherit;transition:border-color 120ms ease,box-shadow 120ms ease,background-color 120ms ease}
+input:focus,select:focus{outline:none;border-color:var(--blue);background:#fff;box-shadow:0 0 0 3px rgba(37,99,235,.16)}
+select:disabled{opacity:.6;cursor:not-allowed}
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px;padding-top:16px;border-top:1px solid var(--line);align-items:center}
+button,input[type="submit"],.button-link{min-height:38px;border:1px solid transparent;border-radius:8px;background:var(--teal);color:#fff;padding:8px 15px;font:inherit;font-weight:700;cursor:pointer;text-decoration:none;text-align:center;box-shadow:0 5px 14px rgba(15,118,110,.22);transition:transform 120ms ease,box-shadow 120ms ease,background-color 120ms ease}
+button:hover,input[type="submit"]:hover,.button-link:hover{background:var(--teal-dark);box-shadow:0 7px 18px rgba(15,118,110,.28);transform:translateY(-1px)}
+.secondary{background:var(--slate)!important;box-shadow:0 5px 14px rgba(71,85,105,.18)!important}
+.save-status{font-size:13px;font-weight:700}
+.save-status.ok{color:var(--green)}
+.save-status.err{color:var(--rose)}
+@media(max-width:820px){.topbar,.form-grid{grid-template-columns:1fr}.topbar .meta{min-width:0;text-align:left}}
+</style>
+</head>
+<body>
+<main class="shell">
+  <header class="topbar">
+    <div>
+      <h1>Input Configuration</h1>
+      <div class="hint">Configure input modes and MQTT publish topics.</div>
+    </div>
+    <div class="meta">
+      <div>System time: <span id="topbar-time">-</span></div>
+      <div>Uptime: <span id="topbar-uptime">-</span></div>
+      <div>Heap: <strong id="hb-free">—</strong> B | min: <strong id="hb-min">—</strong> B | blk: <strong id="hb-blk">—</strong> B</div>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <form id="Form1" onsubmit="return saveConfig()">
+      <section class="card">
+        <h2>Inputs <a class="help-link" href="./InputModesHelp.html">Help</a></h2>
+        <div class="form-grid">
+          <div class="field full"><label for="TOGGLE_BTN_PUB_TOPIC">Toggle Button Publish Topic &mdash; Input 0</label><input type="text" id="TOGGLE_BTN_PUB_TOPIC" maxlength="64"></div>
+        </div>
+
+        <div class="subhead">Input Modes</div>
+        <div class="form-grid">
+          <div class="field">
+            <label>Input 0 Mode (GPIO4)</label>
+            <select id="IN0" onchange="sync(0,this)">
+              <option value="2">Input Mode</option>
+              <option value="3">Toggle Mode &mdash; Coil Connected</option>
+              <option value="4">Copy Input to Coil</option>
+            </select>
+            <input class="hidden-field" type="text" id="I0MODE" readonly>
+          </div>
+          <div class="field">
+            <label>Input 1 Mode (GPIO33)</label>
+            <select id="IN1" onchange="sync(1,this)">
+              <option value="1">Click Mode</option>
+              <option value="2">Input Mode</option>
+              <option value="3">Toggle Mode &mdash; Coil Connected</option>
+              <option value="4">Copy Input to Coil</option>
+              <option value="5">Temperature Sensor</option>
+            </select>
+            <input class="hidden-field" type="text" id="I1MODE" readonly>
+          </div>
+          <div class="field">
+            <label>Input 2 Mode (GPIO16)</label>
+            <select id="IN2" onchange="sync(2,this)">
+              <option value="1">Click Mode</option>
+              <option value="2">Input Mode</option>
+              <option value="3">Toggle Mode &mdash; Coil Connected</option>
+              <option value="4">Copy Input to Coil</option>
+              <option value="5">Temperature Sensor</option>
+            </select>
+            <input class="hidden-field" type="text" id="I2MODE" readonly>
+          </div>
+          <div class="field">
+            <label>Input 3 Mode (GPIO17)</label>
+            <select id="IN3" onchange="sync(3,this)">
+              <option value="1">Click Mode</option>
+              <option value="2">Input Mode</option>
+              <option value="3">Toggle Mode &mdash; Coil Connected</option>
+              <option value="4">Copy Input to Coil</option>
+            </select>
+            <input class="hidden-field" type="text" id="I3MODE" readonly>
+          </div>
+          <div class="field">
+            <label>Input 4 Mode (GPIO32)</label>
+            <select id="IN4" onchange="sync(4,this)">
+              <option value="1">Click Mode</option>
+              <option value="2">Input Mode</option>
+              <option value="3">Toggle Mode &mdash; Coil Connected</option>
+              <option value="4">Copy Input to Coil</option>
+            </select>
+            <input class="hidden-field" type="text" id="I4MODE" readonly>
+          </div>
+          <div class="field">
+            <label>Input 5 Mode (GPIO26)</label>
+            <select id="IN5" onchange="sync(5,this)">
+              <option value="1">Click Mode</option>
+              <option value="2">Input Mode</option>
+              <option value="3">Toggle Mode &mdash; Coil Connected</option>
+              <option value="4">Copy Input to Coil</option>
+            </select>
+            <input class="hidden-field" type="text" id="I5MODE" readonly>
+          </div>
+          <div class="field">
+            <label>Input 6 Mode (GPIO27)</label>
+            <select id="IN6" onchange="sync(6,this)">
+              <option value="1">Click Mode</option>
+              <option value="2">Input Mode</option>
+              <option value="3">Toggle Mode &mdash; Coil Connected</option>
+              <option value="4">Copy Input to Coil</option>
+            </select>
+            <input class="hidden-field" type="text" id="I6MODE" readonly>
+          </div>
+        </div>
+
+        <div class="subhead">Publish Topics</div>
+        <div class="form-grid">
+          <div class="field"><label for="I12_STS_PTP">Input 1 Topic (GPIO33)</label><input type="text" id="I12_STS_PTP" maxlength="64"></div>
+          <div class="field"><label for="I14_STS_PTP">Input 2 Topic (GPIO16)</label><input type="text" id="I14_STS_PTP" maxlength="64"></div>
+          <div class="field"><label for="I03_STS_PTP">Input 3 Topic (GPIO17)</label><input type="text" id="I03_STS_PTP" maxlength="64"></div>
+          <div class="field"><label for="I04_STS_PTP">Input 4 Topic (GPIO32)</label><input type="text" id="I04_STS_PTP" maxlength="64"></div>
+          <div class="field"><label for="I05_STS_PTP">Input 5 Topic (GPIO26)</label><input type="text" id="I05_STS_PTP" maxlength="64"></div>
+          <div class="field"><label for="I06_STS_PTP">Input 6 Topic (GPIO27)</label><input type="text" id="I06_STS_PTP" maxlength="64"></div>
+        </div>
+      </section>
+
+      <div class="actions">
+        <button type="submit" id="BtnSave">Save</button>
+        <a class="button-link secondary" href="/">Back to Config</a>
+        <span class="save-status" id="SaveStatus"></span>
+      </div>
+    </form>
+  </div>
+</main>
+<script>
+var _wfs=false,_i6orig=2,_tempLock=false;
+function sv(id,v){var e=document.getElementById(id);if(e)e.value=(v!=null)?v:"";}
+function gv(id){var e=document.getElementById(id);return e?e.value:"";}
+function modeValue(id){var v=parseInt(gv(id),10);return isNaN(v)?0:v;}
+function st(id,v){var e=document.getElementById(id);if(e)e.textContent=(v!=null&&v!=="")?String(v):"-";}
+
+function sync(i,sel){sv("I"+i+"MODE",sel.value);}
+
+function loadConfig(){
+  var req=new XMLHttpRequest();req.open("GET","/InputsConfig.json",true);
+  req.onreadystatechange=function(){
+    if(req.readyState!==4||req.status!==200)return;
+    var d;try{d=JSON.parse(req.responseText);}catch(e){return;}
+    st("topbar-time",d.systemtime);st("topbar-uptime",d.uptime);
+    sv("TOGGLE_BTN_PUB_TOPIC",d.TOGGLE_BTN_PUB_TOPIC);
+    for(var i=0;i<7;i++){sv("I"+i+"MODE",d["I"+i+"MODE"]);sv("IN"+i,d["I"+i+"MODE"]);}
+    sv("I12_STS_PTP",d.I12_STS_PTP);sv("I14_STS_PTP",d.I14_STS_PTP);
+    sv("I03_STS_PTP",d.I03_STS_PTP);sv("I04_STS_PTP",d.I04_STS_PTP);
+    sv("I05_STS_PTP",d.I05_STS_PTP);sv("I06_STS_PTP",d.I06_STS_PTP);
+    _wfs=d.WaterFlowSensor===1;
+    _i6orig=(d.I6MODE!=null)?parseInt(d.I6MODE):2;
+    _tempLock=d.hasTempRelay===1;
+    if(_wfs){
+      var s=document.getElementById("IN6");
+      if(s&&!document.getElementById("IN6_FLOW")){var o=document.createElement("option");o.id="IN6_FLOW";o.value="flow";o.textContent="Flow Sensor";s.appendChild(o);}
+      if(s){s.value="flow";s.disabled=true;}
+    }
+    if(_tempLock){
+      ["IN1","IN2"].forEach(function(id){var s=document.getElementById(id);if(s){s.value="5";s.disabled=true;}});
+      sv("I1MODE","5");sv("I2MODE","5");
+    }
+  };req.send();
+}
+
+function saveConfig(){
+  var btn=document.getElementById("BtnSave"),st2=document.getElementById("SaveStatus");
+  btn.disabled=true;st2.textContent="Saving...";st2.className="save-status";
+  var p={
+    TOGGLE_BTN_PUB_TOPIC:gv("TOGGLE_BTN_PUB_TOPIC"),
+    I0MODE:modeValue("I0MODE"),I1MODE:modeValue("I1MODE"),
+    I2MODE:modeValue("I2MODE"),I3MODE:modeValue("I3MODE"),
+    I4MODE:modeValue("I4MODE"),I5MODE:modeValue("I5MODE"),
+    I6MODE:_wfs?_i6orig:modeValue("I6MODE"),
+    I12_STS_PTP:gv("I12_STS_PTP"),I14_STS_PTP:gv("I14_STS_PTP"),
+    I03_STS_PTP:gv("I03_STS_PTP"),I04_STS_PTP:gv("I04_STS_PTP"),
+    I05_STS_PTP:gv("I05_STS_PTP"),I06_STS_PTP:gv("I06_STS_PTP")
+  };
+  var req=new XMLHttpRequest();req.open("POST","/InputsConfig.json",true);
+  req.setRequestHeader("Content-Type","application/json");
+  req.onreadystatechange=function(){
+    if(req.readyState!==4)return;
+    btn.disabled=false;
+    var d={};try{d=JSON.parse(req.responseText||"{}");}catch(e){}
+    if(req.status>=200&&req.status<300&&d.ok){st2.textContent=d.message||"Saved.";st2.className="save-status ok";if(d.restart)setTimeout(function(){location.reload();},7000);}
+    else{st2.textContent=d.message||"Save failed.";st2.className="save-status err";}
+  };
+  req.send(JSON.stringify(p));return false;
+}
+
+document.addEventListener("DOMContentLoaded",loadConfig);
+</script>
+<script>
+(function(){function ph(){fetch('/api/heap').then(function(r){return r.json();}).then(function(d){var f=document.getElementById('hb-free'),m=document.getElementById('hb-min'),b=document.getElementById('hb-blk');if(f&&d.heap!=null)f.textContent=Number(d.heap).toLocaleString();if(m&&d.heapMin!=null)m.textContent=Number(d.heapMin).toLocaleString();if(b&&d.heapMaxBlk!=null)b.textContent=Number(d.heapMaxBlk).toLocaleString();}).catch(function(){});}ph();setInterval(ph,30000);}());
+</script>
+</body>
+</html>

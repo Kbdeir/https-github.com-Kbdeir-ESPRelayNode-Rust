@@ -6,3 +6,4 @@
 *.elf
 *.bin
 .env
+/config.local.json

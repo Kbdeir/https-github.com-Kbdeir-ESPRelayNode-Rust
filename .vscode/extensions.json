@@ -1,6 +1,7 @@
 {
   "recommendations": [
     "rust-lang.rust-analyzer",
+    "ms-vscode.vscode-serial-monitor",
     "ms-vscode-remote.remote-wsl",
     "tamasfe.even-better-toml"
   ]

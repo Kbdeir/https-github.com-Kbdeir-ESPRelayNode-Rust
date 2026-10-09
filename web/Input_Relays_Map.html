@@ -1,0 +1,75 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+<script src="/rust-ui.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Input to Relay Map</title>
+<style>
+:root{--page:#edf1f5;--ink:#152033;--muted:#687589;--panel:#fff;--panel-2:#f8fafc;--line:#d9e1ea;--field:#fdfefe;--teal:#0f766e;--teal-dark:#0a5f59;--slate:#475569;--shadow-sm:0 2px 8px rgba(21,32,51,.06);--shadow:0 18px 45px rgba(21,32,51,.12)}
+*{box-sizing:border-box}
+html{background:var(--page)}
+body{margin:0;min-height:100vh;color:var(--ink);font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.42;background:linear-gradient(180deg,#dfe9f3 0,#edf1f5 320px),var(--page)}
+.shell{width:min(860px,calc(100vw - 32px));margin:0 auto;padding:24px 0 36px}
+.topbar{position:relative;overflow:hidden;color:#fff;border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:24px 26px;margin-bottom:20px;background:linear-gradient(135deg,#152033,#103f49,#0f766e);box-shadow:var(--shadow)}
+.topbar h1{margin:0 0 6px;font-size:24px;font-weight:700}
+.topbar .hint{margin:0;color:#cfe0ea;font-size:13px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow-sm);padding:20px;margin-bottom:16px}
+.card h2{margin:0 0 16px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink);display:flex;align-items:center;gap:8px}
+.card h2::before{content:'';display:inline-block;width:3px;height:14px;background:var(--teal);border-radius:2px;flex-shrink:0}
+.map-header,.map-row{display:grid;grid-template-columns:1fr 36px 1fr;gap:8px;align-items:center;margin-bottom:8px;padding:0 2px}
+.map-row:last-child{margin-bottom:0}
+.map-header{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.map-header span:last-child{text-align:left}
+.map-arrow{text-align:center;color:var(--teal);font-size:16px;font-weight:700;line-height:1}
+select{width:100%;min-height:36px;border:1px solid #bac7d5;border-radius:6px;background:var(--field);color:var(--ink);font-family:Arial,Helvetica,sans-serif;font-size:13px;padding:6px 28px 6px 8px;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23687589'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
+select:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px rgba(15,118,110,.12)}
+.hint-box{background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:12px 14px;font-size:12px;color:var(--muted);line-height:1.6}
+.hint-box strong{color:var(--ink)}
+.hint-box .warn{color:#b7791f;font-weight:700;margin-top:8px;display:block}
+.actions{display:flex;gap:10px;justify-content:flex-end;padding-top:16px;border-top:1px solid var(--line);margin-top:4px}
+.btn{min-height:36px;min-width:100px;padding:0 18px;border-radius:6px;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:700;cursor:pointer;border:none;transition:background .15s}
+.btn-primary{background:var(--teal);color:#fff}
+.btn-primary:hover{background:var(--teal-dark)}
+.btn-secondary{background:var(--panel);color:var(--slate);border:1px solid var(--line)}
+.btn-secondary:hover{background:var(--panel-2)}
+@media(max-width:600px){.map-row{grid-template-columns:1fr 28px 1fr;gap:4px}.map-arrow{font-size:13px}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="topbar">
+    <h1>Input to Relay Map</h1>
+    <p class="hint">Attach physical inputs to relay outputs. Each row maps one input to one relay.</p>
+    <p class="hint" style="margin-top:4px">Heap: <strong id="hb-free">—</strong> B | min: <strong id="hb-min">—</strong> B | blk: <strong id="hb-blk">—</strong> B</p>
+  </div>
+  <div class="card">
+    <h2>Mappings</h2>
+    <form method="get" action="ApplyIRMap.html" enctype="text/plain" id="Form1" onsubmit="return true">
+      <div class="map-header"><span>Input</span><span></span><span>Relay</span></div>
+      <div class="map-row"><select name="I1">%I1_OPT%</select><div class="map-arrow">&#8594;</div><select name="R1">%R1_OPT%</select></div>
+      <div class="map-row"><select name="I2">%I2_OPT%</select><div class="map-arrow">&#8594;</div><select name="R2">%R2_OPT%</select></div>
+      <div class="map-row"><select name="I3">%I3_OPT%</select><div class="map-arrow">&#8594;</div><select name="R3">%R3_OPT%</select></div>
+      <div class="map-row"><select name="I4">%I4_OPT%</select><div class="map-arrow">&#8594;</div><select name="R4">%R4_OPT%</select></div>
+      <div class="map-row"><select name="I5">%I5_OPT%</select><div class="map-arrow">&#8594;</div><select name="R5">%R5_OPT%</select></div>
+      <div class="map-row"><select name="I6">%I6_OPT%</select><div class="map-arrow">&#8594;</div><select name="R6">%R6_OPT%</select></div>
+      <div class="map-row"><select name="I7">%I7_OPT%</select><div class="map-arrow">&#8594;</div><select name="R7">%R7_OPT%</select></div>
+      <div class="map-row"><select name="I8">%I8_OPT%</select><div class="map-arrow">&#8594;</div><select name="R8">%R8_OPT%</select></div>
+      <div class="map-row"><select name="I9">%I9_OPT%</select><div class="map-arrow">&#8594;</div><select name="R9">%R9_OPT%</select></div>
+      <div class="map-row"><select name="I10">%I10_OPT%</select><div class="map-arrow">&#8594;</div><select name="R10">%R10_OPT%</select></div>
+      <div class="actions">
+        <button type="button" class="btn btn-secondary" onclick="window.location.href='/'">Cancel</button>
+        <input type="submit" class="btn btn-primary" name="TimerSave" value="Save">
+      </div>
+    </form>
+  </div>
+  <div class="hint-box">
+    <strong>Pin reference:</strong> IN1=GPIO33 &nbsp; IN2=GPIO16 &nbsp; IN3=GPIO17 &nbsp; IN4=GPIO32 &nbsp; IN5=GPIO26 &nbsp; IN6=GPIO27<br>
+    Relays are numbered starting at 0.
+    <span class="warn">&#9888; Set input mode to Toggle or Copy Input to Relay on the main configuration page.</span>
+  </div>
+</div>
+<script>
+(function(){function ph(){fetch('/api/heap').then(function(r){return r.json();}).then(function(d){var f=document.getElementById('hb-free'),m=document.getElementById('hb-min'),b=document.getElementById('hb-blk');if(f&&d.heap!=null)f.textContent=Number(d.heap).toLocaleString();if(m&&d.heapMin!=null)m.textContent=Number(d.heapMin).toLocaleString();if(b&&d.heapMaxBlk!=null)b.textContent=Number(d.heapMaxBlk).toLocaleString();}).catch(function(){});}ph();setInterval(ph,30000);}());
+</script></body>
+</html>

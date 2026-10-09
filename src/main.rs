@@ -1,15 +1,21 @@
-//! Phase 0: ESP-IDF bring-up on the original ESP32.
-//! Network services and relay outputs are deliberately not enabled yet.
-use anyhow::Result;
+mod app;
+mod filesystem;
+mod firmware;
+mod http;
+mod modbus;
+mod mqtt;
+mod recovery;
+mod services;
+mod storage;
 
-fn main() -> Result<()> {
+fn main() -> anyhow::Result<()> {
     esp_idf_svc::sys::link_patches();
     esp_idf_svc::log::EspLogger::initialize_default();
 
-    log::info!("ESPRelayNode-Rust: Phase 0 boot OK");
-
-    loop {
-        log::info!("ESPRelayNode-Rust heartbeat");
-        std::thread::sleep(std::time::Duration::from_secs(10));
+    if let Err(error) = app::run() {
+        log::error!("Control stopped: {error}; relay OFF, restarting after 60 seconds");
+        esp_idf_svc::hal::delay::FreeRtos::delay_ms(60_000);
+        unsafe { esp_idf_svc::sys::esp_restart() };
     }
+    Ok(())
 }

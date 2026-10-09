@@ -1,0 +1,22 @@
+pub mod command;
+pub mod config;
+pub mod engine;
+pub mod health;
+pub mod input;
+pub mod management;
+pub mod modbus;
+pub mod protocol;
+pub mod runtime;
+pub mod schedule;
+pub mod web;
+
+pub const LED_GPIO: u8 = 2;
+pub const RELAY_GPIO: u8 = 25;
+pub const INPUT_GPIOS: [u8; 6] = [33, 16, 17, 32, 26, 27];
+pub const CONFIG_BUTTON_GPIO: u8 = 4;
+pub const INPUT_DEBOUNCE_MS: u64 = 10;
+pub const CONTROL_TICK_MS: u64 = 10;
+pub const COMMAND_QUEUE_CAPACITY: usize = 16;
+pub mod automation;
+pub mod backup;
+pub mod filesystem;

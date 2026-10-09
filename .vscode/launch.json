@@ -1,0 +1,33 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "ESP Rust: Flash and monitor",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": ".\\flash.cmd -Port ${input:serialPort}",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "ESP Rust: Open COM port monitor",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": ".\\monitor.cmd -Port ${input:serialPort} -Baud ${input:monitorBaud}",
+      "cwd": "${workspaceFolder}"
+    }
+  ],
+  "inputs": [
+    {
+      "id": "serialPort",
+      "type": "promptString",
+      "description": "ESP32 serial port",
+      "default": "COM6"
+    },
+    {
+      "id": "monitorBaud",
+      "type": "promptString",
+      "description": "Serial monitor baud rate",
+      "default": "115200"
+    }
+  ]
+}

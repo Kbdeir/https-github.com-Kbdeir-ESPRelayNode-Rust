@@ -2,17 +2,112 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Rust: Build release",
+      "label": "ESP Rust: Test control core",
       "type": "shell",
-      "command": "cargo build --release",
-      "group": "build",
+      "command": ".\\test-core.cmd",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "test",
       "problemMatcher": []
     },
     {
-      "label": "Rust: Flash and monitor",
+      "label": "ESP Rust: Import reference configuration",
       "type": "shell",
-      "command": "cargo run --release",
+      "command": ".\\import-config.cmd",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
       "problemMatcher": []
+    },
+    {
+      "label": "ESP Rust: Setup tools",
+      "type": "shell",
+      "command": ".\\setup-tools.cmd",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "ESP Rust: Compile release",
+      "type": "shell",
+      "command": ".\\compile.cmd",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "ESP Rust: Flash and monitor",
+      "type": "shell",
+      "command": ".\\flash.cmd",
+      "args": [
+        "-Port",
+        "${input:serialPort}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "ESP Rust: Monitor",
+      "type": "shell",
+      "command": ".\\monitor.cmd",
+      "args": [
+        "-Port",
+        "${input:serialPort}",
+        "-Baud",
+        "${input:monitorBaud}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "clear": true,
+        "focus": true,
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "ESP Rust: Open COM port monitor",
+      "type": "shell",
+      "command": ".\\monitor.cmd",
+      "args": [
+        "-Port",
+        "${input:serialPort}",
+        "-Baud",
+        "${input:monitorBaud}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "clear": true,
+        "focus": true,
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "serialPort",
+      "type": "promptString",
+      "description": "ESP32 serial port",
+      "default": "COM3"
+    },
+    {
+      "id": "monitorBaud",
+      "type": "promptString",
+      "description": "Serial monitor baud rate",
+      "default": "115200"
     }
   ]
 }

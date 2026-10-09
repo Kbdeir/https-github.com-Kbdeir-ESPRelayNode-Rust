@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="en">
+<head>
+<script src="/rust-ui.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Node Configuration</title>
+<style>
+:root{--page:#edf1f5;--ink:#152033;--muted:#687589;--panel:#fff;--panel-2:#f8fafc;--line:#d9e1ea;--field:#fdfefe;--teal:#0f766e;--teal-dark:#0a5f59;--blue:#2563eb;--amber:#b7791f;--rose:#be123c;--green:#15803d;--slate:#475569;--shadow-sm:0 2px 8px rgba(21,32,51,.06);--shadow:0 18px 45px rgba(21,32,51,.12)}
+*{box-sizing:border-box}
+html{background:var(--page)}
+body{margin:0;min-height:100vh;color:var(--ink);font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.42;background:linear-gradient(180deg,#dfe9f3 0,#edf1f5 320px),var(--page)}
+.shell{width:min(1220px,calc(100vw - 32px));margin:0 auto;padding:24px 0 36px}
+.topbar{position:relative;overflow:hidden;color:#fff;border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:24px 26px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:center;background:linear-gradient(135deg,#152033,#103f49,#0f766e);box-shadow:var(--shadow)}
+.topbar h1{margin:0;font-size:28px;font-weight:700}
+.topbar .hint{margin-top:7px;color:#cfe0ea}
+.topbar .meta{min-width:230px;color:#e6eef5;font-size:13px;text-align:right;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:10px 12px}
+.status-row{margin-top:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px}
+.status{position:relative;min-height:62px;background:rgba(255,255,255,.92);border:1px solid rgba(217,225,234,.95);border-radius:8px;padding:9px 11px;box-shadow:var(--shadow-sm)}
+.status::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:4px;border-radius:0 4px 4px 0;background:var(--teal)}
+.status:nth-child(2)::before{background:var(--amber)}
+.status:nth-child(3)::before{background:var(--blue)}
+.status:nth-child(4)::before{background:var(--rose)}
+.status span{display:block;color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase}
+.status strong{display:block;margin-top:4px;font-size:14px;overflow-wrap:anywhere}
+.status strong.status-ok{color:var(--green)}
+.status strong.status-bad{color:var(--rose)}
+.status strong .status-reading{display:inline;color:inherit;font-size:inherit;font-weight:inherit;text-transform:none}
+.status-values{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 9px;margin-top:5px}
+.status-values div{min-width:0}
+.status-values span{color:#7b8797;font-size:10px}
+.status-values strong{margin-top:2px}
+.mqtt-wide,.wireguard-wide,.location-wide{grid-column:span 2}
+.grid{margin-top:16px;display:grid;grid-template-columns:minmax(0,1fr) 370px;gap:16px;align-items:start}
+aside{position:sticky;top:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow-sm);padding:18px;margin-bottom:16px}
+.card h2{position:relative;display:flex;align-items:center;gap:10px;margin:-2px 0 16px;padding-bottom:12px;color:var(--ink);border-bottom:1px solid var(--line);font-size:18px;font-weight:700}
+.card h2::before{content:"";width:10px;height:28px;border-radius:6px;background:var(--teal);flex:0 0 auto}
+.card:nth-of-type(2) h2::before{background:var(--blue)}
+.card h2.collapsible{cursor:pointer;user-select:none}
+.card h2.collapsible::after{content:"▾";margin-left:auto;font-size:16px;color:var(--muted);transition:transform 200ms ease}
+.card h2.collapsible.collapsed::after{transform:rotate(-90deg)}
+.card h2.collapsible.collapsed{margin-bottom:0;border-bottom-color:transparent;padding-bottom:0}
+.card-body{overflow:hidden;transition:max-height 260ms ease,opacity 200ms ease;max-height:4000px;opacity:1}
+.card-body.collapsed{max-height:0;opacity:0}
+.upload-progress{display:block;margin:10px 0 2px}
+.upload-progress-bar{height:10px;overflow:hidden;border:1px solid #b6c7d9;border-radius:999px;background:#eef4fa}
+.upload-progress-fill{width:100%;height:100%}
+.upload-progress-text{margin-top:5px;color:var(--muted);font-size:12px;font-weight:700}
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 16px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field.full{grid-column:1/-1}
+.wifi-scan-row{display:grid;grid-template-columns:1fr auto;gap:8px}
+.wifi-scan-row button{min-width:92px}
+label{color:var(--muted);font-size:12px;font-weight:700}
+input[type="text"],input[type="number"],select{min-height:38px;border:1px solid #bac7d5;border-radius:8px;background:var(--field);color:var(--ink);padding:8px 10px;font:inherit;transition:border-color 120ms ease,box-shadow 120ms ease,background-color 120ms ease}
+input[type="file"]{min-height:38px;padding:8px;border:1px dashed #aab7c6;border-radius:8px;background:var(--panel-2)}
+input[type="checkbox"]{width:18px;height:18px;accent-color:var(--teal)}
+input:focus,select:focus{outline:none;border-color:var(--blue);background:#fff;box-shadow:0 0 0 3px rgba(37,99,235,.16)}
+.check-row{min-height:38px;display:flex;align-items:center;gap:9px;color:var(--ink);background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+button,input[type="submit"],.button-link{min-height:38px;border:1px solid transparent;border-radius:8px;background:var(--teal);color:#fff;padding:8px 15px;font:inherit;font-weight:700;cursor:pointer;text-decoration:none;text-align:center;box-shadow:0 5px 14px rgba(15,118,110,.22);transition:transform 120ms ease,box-shadow 120ms ease,background-color 120ms ease}
+button:hover,input[type="submit"]:hover,.button-link:hover{background:var(--teal-dark);box-shadow:0 7px 18px rgba(15,118,110,.28);transform:translateY(-1px)}
+.secondary{background:var(--slate)!important;box-shadow:0 5px 14px rgba(71,85,105,.18)!important}
+.danger{background:var(--rose)!important}
+.button-link.disabled,input[type="submit"].disabled{opacity:.4;pointer-events:none;cursor:not-allowed;box-shadow:none!important;transform:none!important}
+.link-list{display:grid;gap:9px}
+.link-list .button-link{display:block;background:#fff;color:var(--ink);border:1px solid var(--line);box-shadow:none;text-align:left}
+.link-list .button-link:hover{background:#f2f7fb;border-color:#bdd0df}
+.power-reset-row{grid-column:1/-1}
+.status-button{width:100%;min-height:28px;margin-top:2px;padding:4px 8px;border-radius:7px;font-size:12px;box-shadow:none}
+@media(max-width:920px){.grid,.status-row,.form-grid,.topbar{grid-template-columns:1fr}aside{position:static}.topbar .meta{min-width:0;text-align:left}}
+</style>
+</head>
+<body>
+<main class="shell">
+  <header class="topbar">
+    <div>
+      <h1>Node Configuration</h1>
+      <div class="hint">Configure networking, relays, sensing, and firmware updates.</div>
+      <div class="hint">Node ID: <span id="NODEID">-</span> &mdash; MAC: <span id="MACADDR">-</span></div>
+    </div>
+    <div class="meta">
+      <div>System time: <span id="topbar-time">-</span></div>
+      <div>Uptime: <span id="topbar-uptime">-</span></div>
+      <div>Heap: <strong id="hb-free">—</strong> B | min: <strong id="hb-min">—</strong> B | blk: <strong id="hb-blk">—</strong> B</div>
+    </div>
+  </header>
+
+  <section class="status-row">
+    <div class="status">
+      <span>Temperature</span>
+      <div class="status-values">
+        <div><span>Sensor 1</span><strong><span class="status-reading" id="ATEMP1">-</span> C</strong></div>
+        <div><span>Sensor 2</span><strong><span class="status-reading" id="ATEMP2">-</span> C</strong></div>
+      </div>
+    </div>
+    <div class="status">
+      <span>Current consumption</span>
+      <div class="status-values">
+        <div><span>ACS 1</span><strong><span class="status-reading" id="ACS1">-</span> A</strong></div>
+        <div><span>ACS 2</span><strong><span class="status-reading" id="ACS2">-</span> A</strong></div>
+      </div>
+    </div>
+    <div class="status" id="card-emonlib">
+      <span>Power sensor</span>
+      <div class="status-values">
+        <div><span>Voltage</span><strong><span class="status-reading" id="CT_VOLTAGE">-</span> V</strong></div>
+        <div><span>Current</span><strong><span class="status-reading" id="CT_CURRENT">-</span> A</strong></div>
+        <div><span>Power</span><strong><span class="status-reading" id="CT_POWER">-</span> W</strong></div>
+        <div><span>Power factor</span><strong id="CT_PF">-</strong></div>
+        <div class="power-reset-row"><button type="button" class="danger status-button" id="ResetAccumulatedPowerButton">Reset accumulated power</button></div>
+      </div>
+    </div>
+    <div class="status">
+      <span>Relay state</span>
+      <div class="status-values">
+        <div><span>Relay 0</span><strong id="RSTATE0">-</strong></div>
+        <div><span>Relay 1</span><strong id="RSTATE1">-</strong></div>
+      </div>
+    </div>
+    <div class="status mqtt-wide">
+      <span>MQTT</span>
+      <div class="status-values">
+        <div><span>Status</span><strong id="MQTT_STATUS">-</strong></div>
+        <div><span>Route</span><strong id="MQTT_ROUTE">-</strong></div>
+        <div><span>Server</span><strong id="MQTT_SERVER">-</strong></div>
+        <div><span>Health</span><strong id="MQTT_HEALTH_TOPIC">-</strong></div>
+      </div>
+    </div>
+    <div class="status wireguard-wide">
+      <span>WireGuard</span>
+      <div class="status-values">
+        <div><span>Status</span><strong id="VPN_STATUS">Loading</strong></div>
+        <div><span>Address</span><strong id="VPN_ADDRESS">-</strong></div>
+        <div><span>Endpoint</span><strong id="VPN_ENDPOINT">-</strong></div>
+        <div><span>DNS</span><strong id="VPN_DNS">-</strong></div>
+      </div>
+    </div>
+    <div class="status location-wide">
+      <span>Location</span>
+      <div class="status-values">
+        <div><span>Tag</span><strong id="PhyLoc_tag">-</strong></div>
+        <div><span>WiFi</span><strong id="WIFI_STATUS">-</strong></div>
+        <div><span>IP</span><strong id="WIFI_IP">-</strong></div>
+        <div><span>Gateway</span><strong id="WIFI_GATEWAY">-</strong></div>
+        <div><span>DNS 1</span><strong id="WIFI_DNS1">-</strong></div>
+        <div><span>DNS 2</span><strong id="WIFI_DNS2">-</strong></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="grid">
+    <div>
+      <form method="get" action="Apply.html" onsubmit="return submitForm1()">
+        <section class="card">
+          <h2 class="collapsible" data-collapse="wifi-body">WiFi And System</h2>
+          <div class="card-body" id="wifi-body"><div class="form-grid">
+            <div class="field full"><label for="PhyLoc">Physical Location Tag</label><input type="text" id="PhyLoc" name="PhyLoc" maxlength="48"></div>
+            <div class="field"><label for="ssid">SSID</label><input type="text" id="ssid" name="ssid" maxlength="32"></div>
+            <div class="field">
+              <label>Available Networks</label>
+              <div class="wifi-scan-row">
+                <select id="WifiScanResults"><option value="">Scan to list networks</option></select>
+                <button type="button" id="WifiScanButton">Scan</button>
+              </div>
+            </div>
+            <div class="field"><label for="pass">Password</label><input type="text" id="pass" name="pass" maxlength="64"></div>
+            <div class="field"><label for="timeserver">Time Server Host/IP</label><input type="text" id="timeserver" name="timeserver" maxlength="64"></div>
+            <div class="field"><label>NTP Route</label><div class="check-row"><input type="checkbox" id="NTP_UseVPN" name="NTP_UseVPN" value="1"> <span>Use VPN tunnel</span></div></div>
+            <div class="field">
+              <label for="ntptz">Time Zone (UTC offset)</label>
+              <select id="ntptz" name="ntptz">
+                <option value="-12">UTC&minus;12 &mdash; Baker Island, Howland Island</option>
+                <option value="-11">UTC&minus;11 &mdash; American Samoa, Niue</option>
+                <option value="-10">UTC&minus;10 &mdash; Hawaii, Cook Islands</option>
+                <option value="-9">UTC&minus;9 &mdash; Alaska</option>
+                <option value="-8">UTC&minus;8 &mdash; Pacific Time (US/Canada)</option>
+                <option value="-7">UTC&minus;7 &mdash; Mountain Time (US/Canada)</option>
+                <option value="-6">UTC&minus;6 &mdash; Central Time (US/Canada), Mexico City</option>
+                <option value="-5">UTC&minus;5 &mdash; Eastern Time (US/Canada), Bogot&aacute;</option>
+                <option value="-4">UTC&minus;4 &mdash; Atlantic Time, Caracas</option>
+                <option value="-3">UTC&minus;3 &mdash; Buenos Aires, S&atilde;o Paulo</option>
+                <option value="-2">UTC&minus;2 &mdash; South Georgia Island</option>
+                <option value="-1">UTC&minus;1 &mdash; Azores, Cape Verde</option>
+                <option value="0">UTC&plusmn;0 &mdash; London (GMT), Reykjav&iacute;k</option>
+                <option value="1">UTC+1 &mdash; Central European Time, Lagos</option>
+                <option value="2">UTC+2 &mdash; Eastern European Time, Cairo, Beirut</option>
+                <option value="3">UTC+3 &mdash; Moscow, Riyadh, Nairobi</option>
+                <option value="4">UTC+4 &mdash; Dubai, Baku</option>
+                <option value="5">UTC+5 &mdash; Karachi, Tashkent</option>
+                <option value="6">UTC+6 &mdash; Dhaka, Almaty</option>
+                <option value="7">UTC+7 &mdash; Bangkok, Jakarta, Ho Chi Minh</option>
+                <option value="8">UTC+8 &mdash; Beijing, Singapore, Perth</option>
+                <option value="9">UTC+9 &mdash; Tokyo, Seoul</option>
+                <option value="10">UTC+10 &mdash; Sydney, Melbourne</option>
+                <option value="11">UTC+11 &mdash; Solomon Islands, Noum&eacute;a</option>
+                <option value="12">UTC+12 &mdash; Auckland, Fiji</option>
+                <option value="13">UTC+13 &mdash; Tonga, Samoa (DST)</option>
+                <option value="14">UTC+14 &mdash; Line Islands</option>
+              </select>
+            </div>
+            <div class="field"><label for="RWD">Failed Pings Before Reboot</label><input type="number" id="RWD" name="RWD"></div>
+            <div class="field"><label for="Pingserver">Ping Server IP</label><input type="text" id="Pingserver" name="Pingserver"></div>
+            <div class="field">
+              <label for="PRST">Restart Action</label>
+              <select id="PRST" name="PRST" onchange="updatePRSTNote()">
+                <option value="0">0 &mdash; No action</option>
+                <option value="1">1 &mdash; Pulse relay 0</option>
+              </select>
+              <span id="PRST_note" class="hint"></span>
+            </div>
+            <div class="field">
+              <label>Daily Restart</label>
+              <div class="check-row"><input type="checkbox" id="DailyRestartEnabled" name="DailyRestartEnabled" value="1"> <span>Enable daily restart</span></div>
+            </div>
+            <div class="field">
+              <label for="DailyRestartTime">Daily Restart Time</label>
+              <input type="time" id="DailyRestartTime" name="DailyRestartTime">
+              <span class="hint">Only restarts if max alloc heap is below 90 KB at that time.</span>
+            </div>
+            <div class="field" id="oled-hw-active-field"><label>OLED Hardware</label><div class="check-row"><input type="checkbox" id="OLED_HW_Active" name="OLED_HW_Active" value="1"> <span>OLED screen physically present</span></div></div>
+            <div class="field" id="ads-hw-active-field"><label>ADS Chip Hardware</label><div class="check-row"><input type="checkbox" id="ADS_HW_Active" name="ADS_HW_Active" value="1"> <span>ADS1X15 ADC chip physically present</span></div></div>
+            <div class="field" id="oled-screen-orientation">
+              <label for="Screen_orientation">Screen Orientation</label>
+              <select id="Screen_orientation" name="Screen_orientation" onchange="updateOrientationNote()">
+                <option value="0">0 &mdash; Normal (0&deg;)</option>
+                <option value="1">1 &mdash; Rotated 90&deg; CW</option>
+                <option value="2">2 &mdash; Upside down (180&deg;)</option>
+                <option value="3">3 &mdash; Rotated 270&deg; CW</option>
+              </select>
+              <span id="orientation_note" class="hint"></span>
+            </div>
+            <div class="field" id="oled-update-interval"><label for="OLEDUpdateIntervalMs">OLED Update Interval (ms)</label><input type="number" min="500" max="4000" step="100" id="OLEDUpdateIntervalMs" name="OLEDUpdateIntervalMs"></div>
+            <div class="field" id="oled-always-on-field"><label>OLED Power</label><div class="check-row"><input type="checkbox" id="OLEDAlwaysOn" name="OLEDAlwaysOn" value="1"> <span>OLED always on</span></div></div>
+          </div></div>
+        </section>
+        <section class="card">
+          <h2 class="collapsible" data-collapse="mqtt-body">MQTT Server</h2>
+          <div class="card-body" id="mqtt-body"><div class="form-grid">
+            <div class="field"><label>MQTT Active</label><div class="check-row"><input type="checkbox" id="MQTT_Active" name="MQTT_Active" value="1"> <span>Enable MQTT</span></div></div>
+            <div class="field" id="ha-discovery-field"><label>Home Assistant</label><div class="check-row"><input type="checkbox" id="HA_Discovery_Active" name="HA_Discovery_Active" value="1"> <span>Publish HA discovery</span></div></div>
+            <div class="field"><label>MQTT Route</label><div class="check-row"><input type="checkbox" id="MQTT_UseVPN" name="MQTT_UseVPN" value="1"> <span>Use VPN tunnel</span></div></div>
+            <div class="field"><label for="MQTT_BROKER">Server Address</label><input type="text" id="MQTT_BROKER" name="MQTT_BROKER" maxlength="64"></div>
+            <div class="field"><label for="MQTT_B_PRT">Port</label><input type="number" id="MQTT_B_PRT" name="MQTT_B_PRT" min="1" max="65535" placeholder="1883"></div>
+            <div class="field"><label for="MQTT_KeepAliveSeconds">Keep Alive / Health Period (s)</label><input type="number" id="MQTT_KeepAliveSeconds" name="MQTT_KeepAliveSeconds" min="5" max="3600" placeholder="60"></div>
+            <div class="field"><label for="mqttUser">User</label><input type="text" id="mqttUser" name="mqttUser" maxlength="64"></div>
+            <div class="field"><label for="mqttPass">Password</label><input type="text" id="mqttPass" name="mqttPass" maxlength="64"></div>
+          </div></div>
+        </section>
+        <div class="actions">
+          <input type="submit" name="Submit" value="Save">
+          <input type="button" id="reboot" class="secondary button-link" value="Reboot">
+          <span id="save-status" role="status" aria-live="polite"></span>
+        </div>
+      </form>
+    </div>
+
+    <aside>
+      <section class="card">
+        <h2>Tools</h2>
+        <div class="link-list">
+          <a class="button-link" href="./LiveReadings.html">&#9679; Live Readings</a>
+          <a class="button-link" href="./RelayConfig.html">&#9670; Relay Configuration</a>
+          <a id="modbus-link" class="button-link" href="./ModbusConfig.html">&#8644; Modbus TCP Configuration</a>
+          <a class="button-link" href="Timer1">&#9200; Schedule Relay Timers</a>
+          <a class="button-link" href="Automation">&#9881; Automation Rules</a>
+          <a class="button-link" href="RemoteSensors">&#128268; Remote Sensor Sources</a>
+          <a id="tool-advtemp" class="button-link" href="./AdvancedTemperatureConf.html" style="display:none">&#9832; Advanced Temperature Configuration</a>
+          <a class="button-link" href="./InputsConfig.html">&#9000; Input Configuration</a>
+          <a class="button-link" href="Input_Relays_Map">&#8644; Control Relays from Inputs</a>
+          <a id="tool-pressure"  class="button-link" href="./PressureSensorConfig.html">&#9650; Pressure Sensor Configuration</a>
+          <a id="tool-ads1x15"  class="button-link" href="./ADS11x5Config.html">&#9889; Battery Voltage Measurement</a>
+          <a id="tool-hst"      class="button-link" href="./HSTConfig.html">&#128267; Battery Current Measurement</a>
+          <a id="tool-sonarct"  class="button-link" href="./CurrentConfig.html">&#8767; Sonar &amp; Current Transformer</a>
+          <a id="tool-waterflow" class="button-link" href="./WaterFlowSensor.html">&#128167; Water Flow Sensor Calibration</a>
+          <a class="button-link" href="./VPNConfig.html">&#128274; VPN Configuration</a>
+          <a class="button-link" href="./SerialLogConfig.html">&#128220; Serial Log Settings</a>
+          <a class="button-link" href="./Backup.html">&#128190; Backup &amp; Restore</a>
+          <a class="button-link" href="./FirmwareMaintenance.html">&#128296; Firmware Maintenance</a>
+          <a class="button-link secondary" href="./Files.html">&#128193; File Manager</a>
+        </div>
+      </section>
+      <section class="card">
+        <h2>Core Dump</h2>
+        <div id="coredump-indicator" style="font-size:13px;color:var(--muted)">Checking&hellip;</div>
+      </section>
+    </aside>
+  </div>
+</main>
+<script>
+// DOM helpers — global so all functions can share them
+function sv(id,v){var e=document.getElementById(id);if(e)e.value=(v!=null)?v:"";}
+function st(id,v){var e=document.getElementById(id);if(e){e.textContent=(v!=null&&v!=="")?String(v):"-";e.title=e.textContent;}}
+function sc(id,v){var e=document.getElementById(id);if(e)e.checked=(v===1||v==="1"||v===true);}
+function hi(id){var e=document.getElementById(id);if(e)e.style.display="none";}
+function sh(id){var e=document.getElementById(id);if(e)e.style.display="";}
+function updateOledHwVisibility(){var cb=document.getElementById("OLED_HW_Active"),on=cb&&cb.checked;(on?sh:hi)("oled-screen-orientation");(on?sh:hi)("oled-update-interval");(on?sh:hi)("oled-always-on-field");}
+function updateAdsHwVisibility(){var cb=document.getElementById("ADS_HW_Active"),on=cb&&cb.checked;(on?sh:hi)("tool-ads1x15");}
+function setCon(id,ok){
+  var e=document.getElementById(id);if(!e)return;
+  e.textContent=ok?"connected":"disconnected";e.title=e.textContent;
+  e.classList.toggle("status-ok",!!ok);e.classList.toggle("status-bad",!ok);
+}
+function fetchJson(url,cb){
+  var req=new XMLHttpRequest();req.open("GET",url,true);
+  req.onreadystatechange=function(){if(req.readyState===4)cb(req.status===200?req.responseText:null);};
+  req.send();
+}
+
+function updateOrientationNote(){var e=document.getElementById("Screen_orientation"),n=document.getElementById("orientation_note");if(!e||!n)return;var notes=["Normal landscape — USB connector side down","Rotated 90\xb0 clockwise — portrait","Upside-down landscape — USB connector side up","Rotated 270\xb0 clockwise — portrait, flipped"];n.textContent=notes[parseInt(e.value)]||"";}
+function updatePRSTNote(){var e=document.getElementById("PRST"),n=document.getElementById("PRST_note");if(!e||!n)return;n.textContent=e.value==="1"?"Pulse relay 0 at restart":"No action";}
+function submitForm1(){var e=document.getElementById("ssid");if(e&&e.value.trim()===""){alert("Please enter an SSID.");e.focus();return false;}return true;}
+
+function applyConfigData(d){
+  st("NODEID",d.NODEID);st("MACADDR",d.MACADDR);
+  st("topbar-time",d.systemtime);st("topbar-uptime",d.uptime);
+  st("PhyLoc_tag",d.PhyLoc);
+  st("ATEMP1",d.ATEMP1);st("ATEMP2",d.ATEMP2);
+  st("ACS1",d.ACS1);st("ACS2",d.ACS2);
+  st("CT_VOLTAGE",d.CT_VOLTAGE);st("CT_CURRENT",d.CT_CURRENT);st("CT_POWER",d.CT_POWER);st("CT_PF",d.CT_PF);
+  st("RSTATE0",d.RSTATE0);st("RSTATE1",d.RSTATE1);
+  sv("PhyLoc",d.PhyLoc);sv("ssid",d.ssid);sv("pass",d.pass);sv("timeserver",d.timeserver);
+  sc("NTP_UseVPN",d.NTP_UseVPN);sv("ntptz",d.ntptz);sv("RWD",d.RWD);sv("Pingserver",d.Pingserver);sv("PRST",d.PRST);updatePRSTNote();
+  sc("DailyRestartEnabled",d.DailyRestartEnabled);sv("DailyRestartTime",d.DailyRestartTime);
+  sc("OLED_HW_Active",d.OLED_HW_Active);sc("ADS_HW_Active",d.ADS_HW_Active);
+  updateOledHwVisibility();updateAdsHwVisibility();
+  sv("Screen_orientation",d.Screen_orientation);updateOrientationNote();sv("OLEDUpdateIntervalMs",d.OLEDUpdateIntervalMs);sc("OLEDAlwaysOn",d.OLEDAlwaysOn);
+  sc("MQTT_Active",d.MQTT_Active);sc("MQTT_UseVPN",d.MQTT_UseVPN);
+  sc("HA_Discovery_Active",d.HA_Discovery_Active);
+  if(d.HA_Discovery_Present!==1)hi("ha-discovery-field");
+  sv("MQTT_BROKER",d.MQTT_BROKER);sv("MQTT_B_PRT",d.MQTT_B_PRT);sv("MQTT_KeepAliveSeconds",d.MQTT_KeepAliveSeconds);
+  sv("mqttUser",d.mqttUser);sv("mqttPass",d.mqttPass);
+  if(d.WaterFlowSensor!==1)hi("tool-waterflow");
+  if(d.PressureSensor!==1)hi("tool-pressure");
+  if(d.ADS1X15!==1){hi("tool-ads1x15");hi("ads-hw-active-field");}
+  if(d.HST!==1)hi("tool-hst");
+  if(d.EmonLib!==1){hi("card-emonlib");hi("tool-sonarct");}
+  if(d.OLED1306!==1){hi("oled-hw-active-field");hi("oled-screen-orientation");hi("oled-update-interval");hi("oled-always-on-field");}
+  var al=document.getElementById("tool-advtemp");
+  if(al)al.classList.toggle("disabled",!(d.I1MODE==5&&d.I2MODE==5));
+}
+
+function fetchAndApplyConfig(){
+  fetchJson("/GetConfig.json",function(t){var d;try{d=JSON.parse(t);}catch(e){return;}if(d)applyConfigData(d);});
+}
+
+function refreshWifiStatus(){
+  fetchJson("/WifiStatus.json",function(t){
+    if(!t){setCon("WIFI_STATUS",false);return;}
+    var d={};try{d=JSON.parse(t);}catch(e){setCon("WIFI_STATUS",false);return;}
+    setCon("WIFI_STATUS",d.connected);st("WIFI_IP",d.ip);st("WIFI_GATEWAY",d.gateway);st("WIFI_DNS1",d.dns1);st("WIFI_DNS2",d.dns2);
+  });
+}
+function refreshVpnStatus(){
+  fetchJson("/WireGuardStatus.json",function(t){
+    if(!t){setCon("VPN_STATUS",false);return;}
+    var d={};try{d=JSON.parse(t);}catch(e){setCon("VPN_STATUS",false);return;}
+    setCon("VPN_STATUS",d.connected||d.networkUp);st("VPN_ADDRESS",d.address);st("VPN_ENDPOINT",d.endpoint);st("VPN_DNS",d.dns);
+  });
+}
+function refreshMqttStatus(){
+  fetchJson("/MqttStatus.json",function(t){
+    if(!t){setCon("MQTT_STATUS",false);return;}
+    var d={};try{d=JSON.parse(t);}catch(e){setCon("MQTT_STATUS",false);return;}
+    setCon("MQTT_STATUS",d.connected);st("MQTT_ROUTE",d.route);st("MQTT_SERVER",d.server);st("MQTT_HEALTH_TOPIC",d.healthTopic);
+  });
+}
+function refreshSensorStatus(){
+  fetchJson("/SensorStatus.json",function(t){
+    if(!t)return;
+    var d;try{d=JSON.parse(t);}catch(e){return;}
+    st("ATEMP1",d.ATEMP1);st("ATEMP2",d.ATEMP2);st("ACS1",d.ACS1);st("ACS2",d.ACS2);
+    st("CT_VOLTAGE",d.CT_VOLTAGE);st("CT_CURRENT",d.CT_CURRENT);st("CT_POWER",d.CT_POWER);st("CT_PF",d.CT_PF);
+    st("RSTATE0",d.RSTATE0);st("RSTATE1",d.RSTATE1);
+  });
+}
+function refreshStatus(){refreshWifiStatus();refreshVpnStatus();refreshMqttStatus();refreshSensorStatus();}
+
+function refreshFeatureFlags(){
+  fetchJson("/FeatureFlags.json",function(t){
+    if(!t)return;
+    var d={};try{d=JSON.parse(t);}catch(e){return;}
+    if(d.solarHeater){var a=document.getElementById("tool-advtemp");if(a)a.style.display="";}
+  });
+}
+
+function setWifiScanLoading(l){var b=document.getElementById("WifiScanButton");if(!b)return;b.disabled=l;b.textContent=l?"Scanning":"Scan";}
+function setWifiScanMessage(m){var s=document.getElementById("WifiScanResults");if(!s)return;s.innerHTML="";var o=document.createElement("option");o.value="";o.textContent=m;s.appendChild(o);}
+function refreshWifiScan(start){
+  var sel=document.getElementById("WifiScanResults");if(!sel)return;
+  setWifiScanLoading(true);setWifiScanMessage("Scanning...");
+  fetchJson("/WifiScan.json"+(start?"?start=1":""),function(t){
+    setWifiScanLoading(false);
+    if(!t){setWifiScanMessage("Scan unavailable");return;}
+    var d={};try{d=JSON.parse(t);}catch(e){setWifiScanMessage("Scan unavailable");return;}
+    if(d.scanning){setTimeout(function(){refreshWifiScan(false);},1200);return;}
+    sel.innerHTML="";
+    var nets=d.networks||[];
+    if(!nets.length){setWifiScanMessage("No networks found");return;}
+    nets.forEach(function(n){if(!n.ssid)return;var o=document.createElement("option");o.value=n.ssid;o.textContent=n.ssid+" ("+n.rssi+" dBm)";sel.appendChild(o);});
+  });
+}
+
+function resetAccumulatedPower(){
+  if(!confirm("Reset accumulated power values to zero?"))return;
+  if(!confirm("Please confirm again. This will erase KWh, MTD, and YTD accumulated power values."))return;
+  var btn=document.getElementById("ResetAccumulatedPowerButton");
+  if(btn){btn.disabled=true;btn.textContent="Resetting...";}
+  var req=new XMLHttpRequest();req.open("POST","/ResetAccumulatedPower.json",true);
+  req.onreadystatechange=function(){
+    if(req.readyState!==4)return;
+    if(btn){btn.disabled=false;btn.textContent="Reset accumulated power";}
+    var d={};try{d=JSON.parse(req.responseText||"{}");}catch(e){}
+    alert((req.status>=200&&req.status<300&&d.ok)?"Accumulated power values were reset.":(d.message||"Failed to reset accumulated power values."));
+  };req.send();
+}
+
+function initCollapsible(){
+  document.querySelectorAll("h2.collapsible").forEach(function(h2){
+    var id=h2.getAttribute("data-collapse"),body=id&&document.getElementById(id);
+    if(!body)return;
+    var key="collapse:"+id,saved=localStorage.getItem(key);
+    if(saved==="1"){h2.classList.add("collapsed");body.classList.add("collapsed");}
+    h2.addEventListener("click",function(){
+      var c=h2.classList.toggle("collapsed");
+      body.classList.toggle("collapsed",c);
+      try{localStorage.setItem(key,c?"1":"0");}catch(e){}
+    });
+  });
+}
+
+// Heap monitor
+(function(){
+  function ph(){fetch('/api/heap').then(function(r){return r.json();}).then(function(d){
+    var f=document.getElementById('hb-free'),m=document.getElementById('hb-min'),b=document.getElementById('hb-blk');
+    if(f&&d.heap!=null)f.textContent=Number(d.heap).toLocaleString();
+    if(m&&d.heapMin!=null)m.textContent=Number(d.heapMin).toLocaleString();
+    if(b&&d.heapMaxBlk!=null)b.textContent=Number(d.heapMaxBlk).toLocaleString();
+  }).catch(function(){});}
+  ph();setInterval(ph,30000);
+}());
+
+function refreshCoreDumpStatus(){
+  fetch("/CoreDumpStatus.json").then(function(r){return r.json();}).then(function(d){
+    var el=document.getElementById("coredump-indicator");
+    if(!el)return;
+    if(d.hasDump){
+      el.innerHTML='<span style="color:var(--rose);font-weight:700;font-size:13px">&#9888; Crash dump stored</span>'
+        +'<div style="margin-top:8px;font-size:11px;font-family:monospace;line-height:1.7;color:var(--ink)">'
+        +'Task: <b>'+d.task+'</b><br>'
+        +'Cause: <b>'+d.excCause+'</b><br>'
+        +'EPC1: <b>0x'+(d.epc1>>>0).toString(16).toUpperCase()+'</b>'
+        +'</div>'
+        +'<a href="./coredump.html" style="display:inline-block;margin-top:10px;padding:6px 12px;background:var(--rose);color:#fff;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none">&#128269; View Core Dump</a>';
+    }else{
+      el.innerHTML='<span style="color:var(--green);font-size:13px">&#10003; No crash dump stored</span>';
+    }
+  }).catch(function(){
+    var el=document.getElementById("coredump-indicator");
+    if(el)el.textContent="Status unavailable.";
+  });
+}
+
+document.addEventListener("DOMContentLoaded",function(){
+  fetchAndApplyConfig();
+  var sb=document.getElementById("WifiScanButton"),sr=document.getElementById("WifiScanResults");
+  if(sb)sb.addEventListener("click",function(){refreshWifiScan(true);});
+  if(sr)sr.addEventListener("change",function(){if(sr.value)sv("ssid",sr.value);});
+  var rb=document.getElementById("ResetAccumulatedPowerButton");
+  if(rb)rb.addEventListener("click",resetAccumulatedPower);
+  var oledCb=document.getElementById("OLED_HW_Active"),adsCb=document.getElementById("ADS_HW_Active");
+  if(oledCb)oledCb.addEventListener("change",updateOledHwVisibility);
+  if(adsCb)adsCb.addEventListener("change",updateAdsHwVisibility);
+  initCollapsible();refreshFeatureFlags();refreshStatus();refreshCoreDumpStatus();
+  setInterval(refreshStatus,3000);
+});
+</script>
+</body>
+</html>

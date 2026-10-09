@@ -11,6 +11,8 @@ jobs:
     name: Build original ESP32 (Xtensa)
     runs-on: ubuntu-22.04
     timeout-minutes: 60
+    env:
+      CARGO_TARGET_DIR: target
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -43,14 +45,26 @@ jobs:
         run: |
           source "$HOME/export-esp.sh"
           mkdir -p dist
+          bootloader=$(find target/xtensa-esp32-espidf/release/build -path '*/out/build/bootloader/bootloader.bin' -print -quit)
+          test -n "$bootloader"
           espflash save-image --chip esp32 --merge \
+            --bootloader "$bootloader" --target-app-partition ota_0 \
+            --partition-table partitions.csv \
             target/xtensa-esp32-espidf/release/esp-relay-node-rust \
             dist/esp-relay-node-rust-esp32.bin
+          espflash save-image --chip esp32 --partition-table partitions.csv \
+            --bootloader "$bootloader" --target-app-partition ota_0 \
+            target/xtensa-esp32-espidf/release/esp-relay-node-rust dist/application-ota.bin
+          python3 -m pip install 'littlefs-python==0.19.0'
+          fs_size=$(python3 -c "import csv; print(int(next(row for row in csv.reader(line for line in open('partitions.csv') if not line.startswith('#')) if row[0].strip() == 'littlefs')[4], 0))")
+          littlefs-python create web dist/littlefs.bin --fs-size="$fs_size" --block-size=4096 --name-max=255
+          python3 tools/verify-filesystem.py dist/littlefs.bin web partitions.csv
+          cp partitions.csv dist/partitions.csv
 
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
         with:
           name: esp-relay-node-rust-esp32
-          path: dist/esp-relay-node-rust-esp32.bin
+          path: dist/*
           if-no-files-found: error
           retention-days: 14
